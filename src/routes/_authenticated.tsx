@@ -11,7 +11,7 @@ export const Route = createFileRoute("/_authenticated")({
 
 const nav = [
   { to: "/clientes", label: "Clientes", icon: Users, enabled: true },
-  { to: "/crm", label: "CRM", icon: Workflow, enabled: false },
+  { to: "/crm", label: "CRM", icon: Workflow, enabled: true },
   { to: "/configuracion", label: "Configuración", icon: Settings, enabled: false },
 ];
 
