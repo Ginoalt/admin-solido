@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
-const url = import.meta.env.VITE_SB_URL as string;
-const key = import.meta.env.VITE_SB_KEY as string;
+const url = "https://goygizqyithyqzctiljk.supabase.co";
+const key = "sb_publishable_Rr1uUzWlarLNSwweGSzg7Q_Dphdb5bC";
 
 export const supabase = createClient(url, key, {
   auth: { persistSession: true, autoRefreshToken: true, storageKey: "sb-auth" },
