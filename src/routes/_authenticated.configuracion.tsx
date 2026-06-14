@@ -100,6 +100,7 @@ function ConfiguracionPage() {
       {selId && <CanalCard key={`canal-${selId}`} profesionalId={selId} />}
       {selId && <BotCard key={`bot-${selId}`} profesionalId={selId} />}
       {selId && <CamposCard key={`campos-${selId}`} profesionalId={selId} />}
+      {selId && <ConocimientoCard key={`conoc-${selId}`} profesionalId={selId} />}
     </div>
   );
 }
@@ -523,6 +524,139 @@ function BotCard({ profesionalId }: { profesionalId: string }) {
               {saving ? "Guardando..." : "Guardar bot"}
             </Button>
             {msg && <span className="text-sm text-muted-foreground">{msg}</span>}
+            {err && <span className="text-sm text-destructive">{err}</span>}
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+type Documento = {
+  id: string;
+  nombre_archivo: string | null;
+  contenido: string | null;
+};
+
+function ConocimientoCard({ profesionalId }: { profesionalId: string }) {
+  const [docs, setDocs] = useState<Documento[]>([]);
+  const [nombre, setNombre] = useState("");
+  const [contenido, setContenido] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function load() {
+    const { data } = await supabase
+      .from("documentos")
+      .select("id, nombre_archivo, contenido")
+      .eq("profesional_id", profesionalId)
+      .order("created_at", { ascending: false });
+    setDocs((data ?? []) as Documento[]);
+  }
+
+  useEffect(() => {
+    load();
+  }, [profesionalId]);
+
+  async function handleAdd(e: React.FormEvent) {
+    e.preventDefault();
+    if (!nombre.trim() || !contenido.trim()) {
+      setErr("Poné un título y el contenido.");
+      return;
+    }
+    setSaving(true);
+    setErr(null);
+    const { error } = await supabase.from("documentos").insert({
+      profesional_id: profesionalId,
+      nombre_archivo: nombre,
+      contenido,
+      tipo: "texto",
+      estado: "listo",
+    });
+    setSaving(false);
+    if (error) {
+      setErr(error.message);
+      return;
+    }
+    setNombre("");
+    setContenido("");
+    load();
+  }
+
+  async function handleDelete(id: string) {
+    await supabase.from("documentos").delete().eq("id", id);
+    load();
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Base de conocimiento</CardTitle>
+        <CardDescription>
+          Lo que el bot va a usar para responder: servicios, precios, preguntas
+          frecuentes, políticas.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {docs.length > 0 && (
+          <div className="rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Título</TableHead>
+                  <TableHead>Vista previa</TableHead>
+                  <TableHead className="w-12"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {docs.map((d) => (
+                  <TableRow key={d.id}>
+                    <TableCell className="font-medium">{d.nombre_archivo}</TableCell>
+                    <TableCell className="text-muted-foreground text-sm max-w-xs truncate">
+                      {d.contenido}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(d.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+
+        <form onSubmit={handleAdd} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="conoc-nombre">Título</Label>
+            <Input
+              id="conoc-nombre"
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              placeholder="Ej: Servicios y precios"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="conoc-contenido">Contenido</Label>
+            <Textarea
+              id="conoc-contenido"
+              rows={6}
+              value={contenido}
+              onChange={(e) => setContenido(e.target.value)}
+              placeholder="Pegá acá el saber del cliente: qué ofrece, precios, horarios, preguntas frecuentes y sus respuestas..."
+            />
+          </div>
+          <div className="flex items-center gap-3">
+            <Button type="submit" disabled={saving}>
+              <Plus className="h-4 w-4" />
+              {saving ? "Guardando..." : "Agregar"}
+            </Button>
             {err && <span className="text-sm text-destructive">{err}</span>}
           </div>
         </form>
