@@ -27,7 +27,7 @@ function LoginPage() {
       setError(error.message);
       return;
     }
-    navigate({ to: "/clientes" });
+    navigate({ to: "/inicio" });
   }
 
   return (
