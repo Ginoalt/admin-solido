@@ -75,6 +75,8 @@ function CrmPage() {
   const [error, setError] = useState<string | null>(null);
   const [openNuevo, setOpenNuevo] = useState(false);
   const [fichaLead, setFichaLead] = useState<Lead | null>(null);
+  const [dragLeadId, setDragLeadId] = useState<string | null>(null);
+  const [dragOverEtapa, setDragOverEtapa] = useState<string | null>(null);
 
   const seleccionado = useMemo(
     () => profesionales.find((p) => p.id === selId) ?? null,
@@ -244,11 +246,51 @@ function CrmPage() {
                     {leadsEtapa.length}
                   </span>
                 </div>
-                <div className="space-y-2 rounded-lg bg-muted/40 p-2 min-h-24">
+                <div
+                  className={`space-y-2 rounded-lg p-2 min-h-24 transition-colors ${
+                    dragOverEtapa === etapa.id
+                      ? "bg-primary/10 ring-2 ring-primary/40"
+                      : "bg-muted/40"
+                  }`}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    if (dragOverEtapa !== etapa.id) setDragOverEtapa(etapa.id);
+                  }}
+                  onDragLeave={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                      setDragOverEtapa(null);
+                    }
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (dragLeadId) {
+                      const l = leads.find((x) => x.id === dragLeadId);
+                      if (l && l.etapa_id !== etapa.id) moverLead(dragLeadId, etapa.id);
+                    }
+                    setDragLeadId(null);
+                    setDragOverEtapa(null);
+                  }}
+                >
+                  {leadsEtapa.length === 0 && (
+                    <p className="px-1 py-3 text-center text-xs text-muted-foreground">
+                      Arrastrá un lead acá
+                    </p>
+                  )}
                   {leadsEtapa.map((lead) => (
                     <div
                       key={lead.id}
-                      className="rounded-md border bg-card p-3 shadow-sm"
+                      draggable
+                      onDragStart={(e) => {
+                        setDragLeadId(lead.id);
+                        e.dataTransfer.effectAllowed = "move";
+                      }}
+                      onDragEnd={() => {
+                        setDragLeadId(null);
+                        setDragOverEtapa(null);
+                      }}
+                      className={`rounded-md border bg-card p-3 shadow-sm cursor-grab active:cursor-grabbing ${
+                        dragLeadId === lead.id ? "opacity-50" : ""
+                      }`}
                     >
                       <button
                         type="button"
@@ -262,21 +304,6 @@ function CrmPage() {
                           <p className="text-xs text-muted-foreground">{lead.telefono}</p>
                         )}
                       </button>
-                      <Select
-                        value={lead.etapa_id ?? undefined}
-                        onValueChange={(v) => moverLead(lead.id, v)}
-                      >
-                        <SelectTrigger className="mt-2 h-7 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {etapas.map((e) => (
-                            <SelectItem key={e.id} value={e.id} className="text-xs">
-                              {e.nombre}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
                     </div>
                   ))}
                 </div>
