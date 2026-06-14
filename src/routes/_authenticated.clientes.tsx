@@ -13,6 +13,16 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -27,7 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Sparkles } from "lucide-react";
+import { Plus, Sparkles, Pencil, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/clientes")({
   component: ClientesPage,
@@ -46,6 +56,9 @@ function ClientesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Profesional | null>(null);
+  const [deleting, setDeleting] = useState<Profesional | null>(null);
+  const [delErr, setDelErr] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -61,6 +74,18 @@ function ClientesPage() {
   useEffect(() => {
     load();
   }, []);
+
+  async function confirmarBorrado() {
+    if (!deleting) return;
+    setDelErr(null);
+    const { error } = await supabase.from("profesionales").delete().eq("id", deleting.id);
+    if (error) {
+      setDelErr(error.message);
+      return;
+    }
+    setDeleting(null);
+    load();
+  }
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
@@ -83,12 +108,18 @@ function ClientesPage() {
                 Nuevo cliente
               </Button>
             </DialogTrigger>
-          <NuevoClienteDialog
-            onCreated={() => {
-              setOpen(false);
-              load();
-            }}
-          />
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Nuevo cliente</DialogTitle>
+              </DialogHeader>
+              <ClienteForm
+                initial={null}
+                onDone={() => {
+                  setOpen(false);
+                  load();
+                }}
+              />
+            </DialogContent>
           </Dialog>
         </div>
       </div>
@@ -101,24 +132,25 @@ function ClientesPage() {
               <TableHead>Rubro</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Estado</TableHead>
+              <TableHead className="w-24 text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                   Cargando...
                 </TableCell>
               </TableRow>
             ) : error ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-destructive py-8">
+                <TableCell colSpan={5} className="text-center text-destructive py-8">
                   {error}
                 </TableCell>
               </TableRow>
             ) : rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                   Sin registros
                 </TableCell>
               </TableRow>
@@ -129,21 +161,81 @@ function ClientesPage() {
                   <TableCell>{r.rubro}</TableCell>
                   <TableCell>{r.email_contacto}</TableCell>
                   <TableCell>{r.estado}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => setEditing(r)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => setDeleting(r)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
       </div>
+
+      {/* Editar cliente */}
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar cliente</DialogTitle>
+          </DialogHeader>
+          {editing && (
+            <ClienteForm
+              key={editing.id}
+              initial={editing}
+              onDone={() => {
+                setEditing(null);
+                load();
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Borrar cliente */}
+      <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Borrar a {deleting?.nombre}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esto borra al cliente y <strong>todo lo asociado</strong>: sus leads, etapas,
+              citas, configuración del bot y conocimiento. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {delErr && <p className="text-sm text-destructive">{delErr}</p>}
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                confirmarBorrado();
+              }}
+            >
+              Sí, borrar todo
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
 
-function NuevoClienteDialog({ onCreated }: { onCreated: () => void }) {
-  const [nombre, setNombre] = useState("");
-  const [rubro, setRubro] = useState("abogado");
-  const [email, setEmail] = useState("");
-  const [estado, setEstado] = useState("prueba");
+function ClienteForm({
+  initial,
+  onDone,
+}: {
+  initial: Profesional | null;
+  onDone: () => void;
+}) {
+  const [nombre, setNombre] = useState(initial?.nombre ?? "");
+  const [rubro, setRubro] = useState(initial?.rubro ?? "abogado");
+  const [email, setEmail] = useState(initial?.email_contacto ?? "");
+  const [estado, setEstado] = useState(initial?.estado ?? "prueba");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -151,67 +243,61 @@ function NuevoClienteDialog({ onCreated }: { onCreated: () => void }) {
     e.preventDefault();
     setSaving(true);
     setError(null);
-    const { error } = await supabase.from("profesionales").insert({
+    const payload = {
       nombre,
       rubro,
       email_contacto: email,
       estado,
-    });
+    };
+    const { error } = initial
+      ? await supabase.from("profesionales").update(payload).eq("id", initial.id)
+      : await supabase.from("profesionales").insert(payload);
     setSaving(false);
     if (error) {
       setError(error.message);
       return;
     }
-    setNombre("");
-    setEmail("");
-    setRubro("abogado");
-    setEstado("prueba");
-    onCreated();
+    onDone();
   }
 
   return (
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>Nuevo cliente</DialogTitle>
-      </DialogHeader>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="nombre">Nombre</Label>
-          <Input id="nombre" required value={nombre} onChange={(e) => setNombre(e.target.value)} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="rubro">Rubro</Label>
-          <Select value={rubro} onValueChange={setRubro}>
-            <SelectTrigger id="rubro"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="abogado">Abogado</SelectItem>
-              <SelectItem value="medico">Médico</SelectItem>
-              <SelectItem value="otro">Otro</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="email">Email de contacto</Label>
-          <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="estado">Estado</Label>
-          <Select value={estado} onValueChange={setEstado}>
-            <SelectTrigger id="estado"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="prueba">Prueba</SelectItem>
-              <SelectItem value="activo">Activo</SelectItem>
-              <SelectItem value="pausado">Pausado</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        <DialogFooter>
-          <Button type="submit" disabled={saving}>
-            {saving ? "Guardando..." : "Crear"}
-          </Button>
-        </DialogFooter>
-      </form>
-    </DialogContent>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="nombre">Nombre</Label>
+        <Input id="nombre" required value={nombre} onChange={(e) => setNombre(e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="rubro">Rubro</Label>
+        <Select value={rubro} onValueChange={setRubro}>
+          <SelectTrigger id="rubro"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="abogado">Abogado</SelectItem>
+            <SelectItem value="medico">Médico</SelectItem>
+            <SelectItem value="otro">Otro</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="email">Email de contacto</Label>
+        <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="estado">Estado</Label>
+        <Select value={estado} onValueChange={setEstado}>
+          <SelectTrigger id="estado"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="prueba">Prueba</SelectItem>
+            <SelectItem value="activo">Activo</SelectItem>
+            <SelectItem value="pausado">Pausado</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      {error && <p className="text-sm text-destructive">{error}</p>}
+      <DialogFooter>
+        <Button type="submit" disabled={saving}>
+          {saving ? "Guardando..." : initial ? "Guardar cambios" : "Crear"}
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }
