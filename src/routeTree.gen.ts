@@ -16,6 +16,7 @@ import { Route as AuthenticatedClientesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedCrmRouteImport } from './routes/_authenticated.crm'
 import { Route as AuthenticatedConfiguracionRouteImport } from './routes/_authenticated.configuracion'
 import { Route as AuthenticatedAltaClienteRouteImport } from './routes/_authenticated.alta-cliente'
+import { Route as AuthenticatedAgendaRouteImport } from './routes/_authenticated.agenda'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -51,6 +52,11 @@ const AuthenticatedAltaClienteRoute = AuthenticatedAltaClienteRouteImport.update
   path: '/alta-cliente',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedAgendaRoute = AuthenticatedAgendaRouteImport.update({
+  id: '/agenda',
+  path: '/agenda',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -59,6 +65,7 @@ export interface FileRoutesByFullPath {
   '/crm': typeof AuthenticatedCrmRoute
   '/configuracion': typeof AuthenticatedConfiguracionRoute
   '/alta-cliente': typeof AuthenticatedAltaClienteRoute
+  '/agenda': typeof AuthenticatedAgendaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/crm': typeof AuthenticatedCrmRoute
   '/configuracion': typeof AuthenticatedConfiguracionRoute
   '/alta-cliente': typeof AuthenticatedAltaClienteRoute
+  '/agenda': typeof AuthenticatedAgendaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -77,6 +85,7 @@ export interface FileRoutesById {
   '/_authenticated/crm': typeof AuthenticatedCrmRoute
   '/_authenticated/configuracion': typeof AuthenticatedConfiguracionRoute
   '/_authenticated/alta-cliente': typeof AuthenticatedAltaClienteRoute
+  '/_authenticated/agenda': typeof AuthenticatedAgendaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -87,8 +96,16 @@ export interface FileRouteTypes {
     | '/crm'
     | '/configuracion'
     | '/alta-cliente'
+    | '/agenda'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/clientes' | '/crm' | '/configuracion' | '/alta-cliente'
+  to:
+    | '/'
+    | '/login'
+    | '/clientes'
+    | '/crm'
+    | '/configuracion'
+    | '/alta-cliente'
+    | '/agenda'
   id:
     | '__root__'
     | '/'
@@ -98,6 +115,7 @@ export interface FileRouteTypes {
     | '/_authenticated/crm'
     | '/_authenticated/configuracion'
     | '/_authenticated/alta-cliente'
+    | '/_authenticated/agenda'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -157,6 +175,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAltaClienteRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/agenda': {
+      id: '/_authenticated/agenda'
+      path: '/agenda'
+      fullPath: '/agenda'
+      preLoaderRoute: typeof AuthenticatedAgendaRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
@@ -165,6 +190,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedCrmRoute: typeof AuthenticatedCrmRoute
   AuthenticatedConfiguracionRoute: typeof AuthenticatedConfiguracionRoute
   AuthenticatedAltaClienteRoute: typeof AuthenticatedAltaClienteRoute
+  AuthenticatedAgendaRoute: typeof AuthenticatedAgendaRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
@@ -172,6 +198,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedCrmRoute: AuthenticatedCrmRoute,
   AuthenticatedConfiguracionRoute: AuthenticatedConfiguracionRoute,
   AuthenticatedAltaClienteRoute: AuthenticatedAltaClienteRoute,
+  AuthenticatedAgendaRoute: AuthenticatedAgendaRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
