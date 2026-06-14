@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { useMiPerfil } from "@/lib/perfil";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -77,6 +78,8 @@ function CrmPage() {
   const [fichaLead, setFichaLead] = useState<Lead | null>(null);
   const [dragLeadId, setDragLeadId] = useState<string | null>(null);
   const [dragOverEtapa, setDragOverEtapa] = useState<string | null>(null);
+
+  const { esAdmin } = useMiPerfil();
 
   const seleccionado = useMemo(
     () => profesionales.find((p) => p.id === selId) ?? null,
@@ -190,18 +193,20 @@ function CrmPage() {
           <p className="text-sm text-muted-foreground">Embudo de leads por cliente</p>
         </div>
         <div className="flex items-center gap-2">
-          <Select value={selId ?? undefined} onValueChange={setSelId}>
-            <SelectTrigger className="w-56">
-              <SelectValue placeholder="Elegí un cliente" />
-            </SelectTrigger>
-            <SelectContent>
-              {profesionales.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.nombre}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {esAdmin && (
+            <Select value={selId ?? undefined} onValueChange={setSelId}>
+              <SelectTrigger className="w-56">
+                <SelectValue placeholder="Elegí un cliente" />
+              </SelectTrigger>
+              <SelectContent>
+                {profesionales.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.nombre}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           {etapas.length > 0 && (
             <Dialog open={openNuevo} onOpenChange={setOpenNuevo}>
               <DialogTrigger asChild>

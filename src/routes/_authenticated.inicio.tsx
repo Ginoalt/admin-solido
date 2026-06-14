@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { useMiPerfil } from "@/lib/perfil";
 import {
   Card,
   CardHeader,
@@ -99,6 +100,7 @@ function InicioPage() {
   });
   const [citasPorEstado, setCitasPorEstado] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const { esAdmin } = useMiPerfil();
 
   useEffect(() => {
     const ahora = new Date();
@@ -229,7 +231,7 @@ function InicioPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((s) => {
+        {stats.filter((s) => esAdmin || s.label !== "Clientes").map((s) => {
           const Icon = s.icon;
           return (
             <Link key={s.label} to={s.to}>

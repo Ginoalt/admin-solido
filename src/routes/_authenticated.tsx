@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { useMiPerfil, clearPerfilCache } from "@/lib/perfil";
 import { LayoutDashboard, Users, Workflow, CalendarDays, Settings, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -10,17 +11,21 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 const nav = [
-  { to: "/inicio", label: "Inicio", icon: LayoutDashboard, enabled: true },
-  { to: "/clientes", label: "Clientes", icon: Users, enabled: true },
-  { to: "/crm", label: "CRM", icon: Workflow, enabled: true },
-  { to: "/agenda", label: "Agenda", icon: CalendarDays, enabled: true },
-  { to: "/configuracion", label: "Configuración", icon: Settings, enabled: true },
+  { to: "/inicio", label: "Inicio", icon: LayoutDashboard, adminOnly: false },
+  { to: "/clientes", label: "Clientes", icon: Users, adminOnly: true },
+  { to: "/crm", label: "CRM", icon: Workflow, adminOnly: false },
+  { to: "/agenda", label: "Agenda", icon: CalendarDays, adminOnly: false },
+  { to: "/configuracion", label: "Configuración", icon: Settings, adminOnly: true },
 ];
+
+// Secciones que solo puede ver el admin (Gino). Si un cliente las pide, lo mandamos al inicio.
+const RUTAS_ADMIN = ["/clientes", "/configuracion", "/alta-cliente"];
 
 function AuthLayout() {
   const navigate = useNavigate();
   const [checking, setChecking] = useState(true);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { loading: perfilLoading, esAdmin } = useMiPerfil();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -28,37 +33,52 @@ function AuthLayout() {
       else setChecking(false);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (!session) navigate({ to: "/login" });
+      if (!session) {
+        clearPerfilCache();
+        navigate({ to: "/login" });
+      }
     });
     return () => sub.subscription.unsubscribe();
   }, [navigate]);
 
+  // Candado de navegación: un cliente no entra a las secciones de admin.
+  useEffect(() => {
+    if (perfilLoading) return;
+    if (!esAdmin && RUTAS_ADMIN.some((p) => pathname.startsWith(p))) {
+      navigate({ to: "/inicio" });
+    }
+  }, [perfilLoading, esAdmin, pathname, navigate]);
+
   async function handleLogout() {
+    clearPerfilCache();
     await supabase.auth.signOut();
     navigate({ to: "/login" });
   }
 
-  if (checking) return <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">Cargando...</div>;
+  if (checking || perfilLoading)
+    return (
+      <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">
+        Cargando...
+      </div>
+    );
+
+  const items = nav.filter((item) => esAdmin || !item.adminOnly);
 
   return (
     <div className="min-h-screen flex bg-muted/20">
       <aside className="w-60 border-r bg-card flex flex-col">
         <div className="px-5 py-5 border-b">
           <h2 className="font-semibold tracking-tight">Panel</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {esAdmin ? "Administrador" : "Mi panel"}
+          </p>
         </div>
         <nav className="flex-1 p-3 space-y-1">
-          {nav.map((item) => {
+          {items.map((item) => {
             const Icon = item.icon;
             const active = pathname.startsWith(item.to);
-            const base = "flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors";
-            if (!item.enabled) {
-              return (
-                <span key={item.to} className={`${base} text-muted-foreground/60 cursor-not-allowed`}>
-                  <Icon className="h-4 w-4" />
-                  {item.label}
-                </span>
-              );
-            }
+            const base =
+              "flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors";
             return (
               <Link
                 key={item.to}
