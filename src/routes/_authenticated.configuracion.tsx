@@ -28,7 +28,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
+import { Plus, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/configuracion")({
   component: ConfiguracionPage,
@@ -100,6 +110,7 @@ function ConfiguracionPage() {
       {selId && <CanalCard key={`canal-${selId}`} profesionalId={selId} />}
       {selId && <BotCard key={`bot-${selId}`} profesionalId={selId} />}
       {selId && <CamposCard key={`campos-${selId}`} profesionalId={selId} />}
+      {selId && <EtapasCard key={`etapas-${selId}`} profesionalId={selId} />}
       {selId && <ConocimientoCard key={`conoc-${selId}`} profesionalId={selId} />}
     </div>
   );
@@ -528,6 +539,207 @@ function BotCard({ profesionalId }: { profesionalId: string }) {
           </div>
         </form>
       </CardContent>
+    </Card>
+  );
+}
+
+type Etapa = {
+  id: string;
+  nombre: string;
+  orden: number;
+  tipo: string | null;
+};
+
+const TIPOS_ETAPA: Record<string, string> = {
+  normal: "Normal",
+  ganado: "Ganado",
+  perdido: "Perdido",
+};
+
+function EtapasCard({ profesionalId }: { profesionalId: string }) {
+  const [etapas, setEtapas] = useState<Etapa[]>([]);
+  const [nombre, setNombre] = useState("");
+  const [tipo, setTipo] = useState("normal");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<Etapa | null>(null);
+
+  async function load() {
+    const { data } = await supabase
+      .from("etapas_pipeline")
+      .select("id, nombre, orden, tipo")
+      .eq("profesional_id", profesionalId)
+      .order("orden", { ascending: true });
+    setEtapas((data ?? []) as Etapa[]);
+  }
+
+  useEffect(() => {
+    load();
+  }, [profesionalId]);
+
+  async function handleAdd(e: React.FormEvent) {
+    e.preventDefault();
+    if (!nombre.trim()) {
+      setErr("Poné un nombre para la etapa.");
+      return;
+    }
+    setSaving(true);
+    setErr(null);
+    const maxOrden = etapas.reduce((m, et) => Math.max(m, et.orden), -1);
+    const { error } = await supabase.from("etapas_pipeline").insert({
+      profesional_id: profesionalId,
+      nombre,
+      orden: maxOrden + 1,
+      tipo,
+    });
+    setSaving(false);
+    if (error) {
+      setErr(error.message);
+      return;
+    }
+    setNombre("");
+    setTipo("normal");
+    load();
+  }
+
+  async function renombrar(id: string, nuevo: string) {
+    await supabase.from("etapas_pipeline").update({ nombre: nuevo }).eq("id", id);
+  }
+
+  async function mover(index: number, dir: number) {
+    const target = index + dir;
+    if (target < 0 || target >= etapas.length) return;
+    const a = etapas[index];
+    const b = etapas[target];
+    await Promise.all([
+      supabase.from("etapas_pipeline").update({ orden: b.orden }).eq("id", a.id),
+      supabase.from("etapas_pipeline").update({ orden: a.orden }).eq("id", b.id),
+    ]);
+    load();
+  }
+
+  async function confirmarBorrado() {
+    if (!deleting) return;
+    await supabase.from("etapas_pipeline").delete().eq("id", deleting.id);
+    setDeleting(null);
+    load();
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Etapas del embudo</CardTitle>
+        <CardDescription>
+          Las columnas del Kanban de este cliente. Renombralas, reordenalas o borralas.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {etapas.length > 0 && (
+          <div className="space-y-2">
+            {etapas.map((et, i) => (
+              <div key={et.id} className="flex items-center gap-2">
+                <div className="flex flex-col">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-7"
+                    disabled={i === 0}
+                    onClick={() => mover(i, -1)}
+                  >
+                    <ArrowUp className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-7"
+                    disabled={i === etapas.length - 1}
+                    onClick={() => mover(i, 1)}
+                  >
+                    <ArrowDown className="h-3 w-3" />
+                  </Button>
+                </div>
+                <Input
+                  defaultValue={et.nombre}
+                  onBlur={(e) => {
+                    if (e.target.value.trim() && e.target.value !== et.nombre) {
+                      renombrar(et.id, e.target.value);
+                    }
+                  }}
+                  className="flex-1"
+                />
+                <span className="text-xs text-muted-foreground w-16 text-center">
+                  {TIPOS_ETAPA[et.tipo ?? "normal"] ?? et.tipo}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setDeleting(et)}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <form onSubmit={handleAdd} className="flex items-end gap-2 flex-wrap">
+          <div className="space-y-2 flex-1 min-w-40">
+            <Label htmlFor="etapa-nombre">Nueva etapa</Label>
+            <Input
+              id="etapa-nombre"
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              placeholder="Ej: Negociación"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="etapa-tipo">Tipo</Label>
+            <Select value={tipo} onValueChange={setTipo}>
+              <SelectTrigger id="etapa-tipo" className="w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(TIPOS_ETAPA).map(([v, l]) => (
+                  <SelectItem key={v} value={v}>
+                    {l}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button type="submit" disabled={saving}>
+            <Plus className="h-4 w-4" />
+            Agregar
+          </Button>
+        </form>
+        {err && <p className="text-sm text-destructive">{err}</p>}
+      </CardContent>
+
+      <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Borrar la etapa "{deleting?.nombre}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Los leads que estén en esta etapa quedan sin etapa (no se borran). Después los
+              podés reasignar.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                confirmarBorrado();
+              }}
+            >
+              Sí, borrar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
