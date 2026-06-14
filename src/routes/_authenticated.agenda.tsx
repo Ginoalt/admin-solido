@@ -1,0 +1,342 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Plus } from "lucide-react";
+
+export const Route = createFileRoute("/_authenticated/agenda")({
+  component: AgendaPage,
+});
+
+type Profesional = { id: string; nombre: string | null };
+type LeadMin = { id: string; nombre: string | null };
+type Cita = {
+  id: string;
+  lead_id: string | null;
+  fecha_hora: string;
+  estado: string | null;
+  origen_agenda: string | null;
+};
+
+const ESTADOS: Record<string, string> = {
+  agendada: "Agendada",
+  confirmada: "Confirmada",
+  atendida: "Atendida",
+  no_show: "No asistió",
+  cancelada: "Cancelada",
+};
+
+function formatFecha(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString("es-AR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+function AgendaPage() {
+  const [profesionales, setProfesionales] = useState<Profesional[]>([]);
+  const [selId, setSelId] = useState<string | null>(null);
+  const [citas, setCitas] = useState<Cita[]>([]);
+  const [leads, setLeads] = useState<LeadMin[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [openNueva, setOpenNueva] = useState(false);
+
+  useEffect(() => {
+    supabase
+      .from("profesionales")
+      .select("id, nombre")
+      .order("nombre", { ascending: true })
+      .then(({ data }) => {
+        const list = (data ?? []) as Profesional[];
+        setProfesionales(list);
+        if (list.length > 0) setSelId(list[0].id);
+        setLoading(false);
+      });
+  }, []);
+
+  async function load(profesionalId: string) {
+    setError(null);
+    const [citasRes, leadsRes] = await Promise.all([
+      supabase
+        .from("citas")
+        .select("id, lead_id, fecha_hora, estado, origen_agenda")
+        .eq("profesional_id", profesionalId)
+        .order("fecha_hora", { ascending: true }),
+      supabase
+        .from("leads")
+        .select("id, nombre")
+        .eq("profesional_id", profesionalId)
+        .order("nombre", { ascending: true }),
+    ]);
+    if (citasRes.error) return setError(citasRes.error.message);
+    setCitas((citasRes.data ?? []) as Cita[]);
+    setLeads((leadsRes.data ?? []) as LeadMin[]);
+  }
+
+  useEffect(() => {
+    if (selId) load(selId);
+    else {
+      setCitas([]);
+      setLeads([]);
+    }
+  }, [selId]);
+
+  function leadNombre(id: string | null): string {
+    if (!id) return "—";
+    return leads.find((l) => l.id === id)?.nombre || "Lead";
+  }
+
+  async function cambiarEstado(citaId: string, estado: string) {
+    setCitas((prev) =>
+      prev.map((c) => (c.id === citaId ? { ...c, estado } : c)),
+    );
+    const { error } = await supabase.from("citas").update({ estado }).eq("id", citaId);
+    if (error && selId) load(selId);
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">
+        Cargando...
+      </div>
+    );
+  }
+
+  if (profesionales.length === 0) {
+    return (
+      <div className="p-8 max-w-5xl mx-auto">
+        <h1 className="text-2xl font-semibold tracking-tight">Agenda</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Todavía no hay clientes. Creá uno en la sección <strong>Clientes</strong> para
+          gestionar sus citas.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-8 max-w-5xl mx-auto">
+      <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Agenda</h1>
+          <p className="text-sm text-muted-foreground">Citas agendadas por cliente</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Select value={selId ?? undefined} onValueChange={setSelId}>
+            <SelectTrigger className="w-56">
+              <SelectValue placeholder="Elegí un cliente" />
+            </SelectTrigger>
+            <SelectContent>
+              {profesionales.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.nombre}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Dialog open={openNueva} onOpenChange={setOpenNueva}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4" />
+                Nueva cita
+              </Button>
+            </DialogTrigger>
+            <NuevaCitaDialog
+              profesionalId={selId!}
+              leads={leads}
+              onCreated={() => {
+                setOpenNueva(false);
+                if (selId) load(selId);
+              }}
+            />
+          </Dialog>
+        </div>
+      </div>
+
+      {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
+
+      <div className="rounded-lg border bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Fecha y hora</TableHead>
+              <TableHead>Lead</TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead>Origen</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {citas.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                  Sin citas
+                </TableCell>
+              </TableRow>
+            ) : (
+              citas.map((c) => (
+                <TableRow key={c.id}>
+                  <TableCell className="font-medium">{formatFecha(c.fecha_hora)}</TableCell>
+                  <TableCell>{leadNombre(c.lead_id)}</TableCell>
+                  <TableCell>
+                    <Select
+                      value={c.estado ?? "agendada"}
+                      onValueChange={(v) => cambiarEstado(c.id, v)}
+                    >
+                      <SelectTrigger className="h-8 w-36 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(ESTADOS).map(([value, label]) => (
+                          <SelectItem key={value} value={value} className="text-xs">
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {c.origen_agenda ?? "manual"}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
+
+function NuevaCitaDialog({
+  profesionalId,
+  leads,
+  onCreated,
+}: {
+  profesionalId: string;
+  leads: LeadMin[];
+  onCreated: () => void;
+}) {
+  const [leadId, setLeadId] = useState("");
+  const [fecha, setFecha] = useState("");
+  const [estado, setEstado] = useState("agendada");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!fecha) {
+      setError("Elegí fecha y hora.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    const { error } = await supabase.from("citas").insert({
+      profesional_id: profesionalId,
+      lead_id: leadId || null,
+      fecha_hora: new Date(fecha).toISOString(),
+      estado,
+      origen_agenda: "manual",
+    });
+    setSaving(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    onCreated();
+  }
+
+  return (
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>Nueva cita</DialogTitle>
+      </DialogHeader>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="cita-lead">Lead</Label>
+          {leads.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Este cliente no tiene leads todavía. Podés crear la cita sin lead o cargar
+              uno en el CRM.
+            </p>
+          ) : (
+            <Select value={leadId} onValueChange={setLeadId}>
+              <SelectTrigger id="cita-lead">
+                <SelectValue placeholder="Elegí un lead (opcional)" />
+              </SelectTrigger>
+              <SelectContent>
+                {leads.map((l) => (
+                  <SelectItem key={l.id} value={l.id}>
+                    {l.nombre || "Sin nombre"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="cita-fecha">Fecha y hora</Label>
+          <Input
+            id="cita-fecha"
+            type="datetime-local"
+            value={fecha}
+            onChange={(e) => setFecha(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="cita-estado">Estado</Label>
+          <Select value={estado} onValueChange={setEstado}>
+            <SelectTrigger id="cita-estado">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(ESTADOS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        <DialogFooter>
+          <Button type="submit" disabled={saving}>
+            {saving ? "Guardando..." : "Crear cita"}
+          </Button>
+        </DialogFooter>
+      </form>
+    </DialogContent>
+  );
+}

@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { Users, Workflow, Settings, LogOut } from "lucide-react";
+import { Users, Workflow, CalendarDays, Settings, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -12,6 +12,7 @@ export const Route = createFileRoute("/_authenticated")({
 const nav = [
   { to: "/clientes", label: "Clientes", icon: Users, enabled: true },
   { to: "/crm", label: "CRM", icon: Workflow, enabled: true },
+  { to: "/agenda", label: "Agenda", icon: CalendarDays, enabled: true },
   { to: "/configuracion", label: "Configuración", icon: Settings, enabled: true },
 ];
 
