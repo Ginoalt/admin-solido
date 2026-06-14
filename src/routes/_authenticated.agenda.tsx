@@ -27,7 +27,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
+import { Plus, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/agenda")({
   component: AgendaPage,
@@ -73,6 +83,8 @@ function AgendaPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openNueva, setOpenNueva] = useState(false);
+  const [deleting, setDeleting] = useState<Cita | null>(null);
+  const [delErr, setDelErr] = useState<string | null>(null);
 
   useEffect(() => {
     supabase
@@ -125,6 +137,18 @@ function AgendaPage() {
     );
     const { error } = await supabase.from("citas").update({ estado }).eq("id", citaId);
     if (error && selId) load(selId);
+  }
+
+  async function confirmarBorrado() {
+    if (!deleting) return;
+    setDelErr(null);
+    const { error } = await supabase.from("citas").delete().eq("id", deleting.id);
+    if (error) {
+      setDelErr(error.message);
+      return;
+    }
+    setDeleting(null);
+    if (selId) load(selId);
   }
 
   if (loading) {
@@ -196,12 +220,13 @@ function AgendaPage() {
               <TableHead>Lead</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead>Origen</TableHead>
+              <TableHead className="w-12 text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {citas.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                   Sin citas
                 </TableCell>
               </TableRow>
@@ -230,12 +255,43 @@ function AgendaPage() {
                   <TableCell className="text-muted-foreground text-sm">
                     {c.origen_agenda ?? "manual"}
                   </TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="icon" onClick={() => setDeleting(c)}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
       </div>
+
+      <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Borrar esta cita?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleting
+                ? `${formatFecha(deleting.fecha_hora)} — ${leadNombre(deleting.lead_id)}. `
+                : ""}
+              Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {delErr && <p className="text-sm text-destructive">{delErr}</p>}
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                confirmarBorrado();
+              }}
+            >
+              Sí, borrar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

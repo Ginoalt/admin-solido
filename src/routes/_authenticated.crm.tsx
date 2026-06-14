@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/crm")({
   component: CrmPage,
@@ -296,6 +296,10 @@ function CrmPage() {
               setFichaLead(null);
               if (selId) loadTablero(selId);
             }}
+            onDeleted={() => {
+              setFichaLead(null);
+              if (selId) loadTablero(selId);
+            }}
           />
         )}
       </Dialog>
@@ -402,11 +406,13 @@ function FichaLeadDialog({
   etapas,
   campos,
   onSaved,
+  onDeleted,
 }: {
   lead: Lead;
   etapas: Etapa[];
   campos: Campo[];
   onSaved: () => void;
+  onDeleted: () => void;
 }) {
   const [nombre, setNombre] = useState(lead.nombre ?? "");
   const [telefono, setTelefono] = useState(lead.telefono ?? "");
@@ -426,6 +432,21 @@ function FichaLeadDialog({
 
   function setCampoValor(clave: string, valor: string) {
     setExtra((prev) => ({ ...prev, [clave]: valor }));
+  }
+
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    setDeleting(true);
+    setError(null);
+    const { error } = await supabase.from("leads").delete().eq("id", lead.id);
+    setDeleting(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    onDeleted();
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -532,10 +553,40 @@ function FichaLeadDialog({
         </div>
 
         {error && <p className="text-sm text-destructive">{error}</p>}
-        <DialogFooter>
-          <Button type="submit" disabled={saving}>
-            {saving ? "Guardando..." : "Guardar"}
-          </Button>
+        <DialogFooter className="sm:justify-between gap-2">
+          {!confirmDel ? (
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-destructive"
+                onClick={() => setConfirmDel(true)}
+              >
+                <Trash2 className="h-4 w-4" />
+                Borrar
+              </Button>
+              <Button type="submit" disabled={saving}>
+                {saving ? "Guardando..." : "Guardar"}
+              </Button>
+            </>
+          ) : (
+            <div className="flex items-center gap-2 w-full justify-end">
+              <span className="text-sm text-muted-foreground mr-auto">
+                ¿Borrar este lead?
+              </span>
+              <Button type="button" variant="ghost" onClick={() => setConfirmDel(false)}>
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={deleting}
+                onClick={handleDelete}
+              >
+                {deleting ? "Borrando..." : "Sí, borrar"}
+              </Button>
+            </div>
+          )}
         </DialogFooter>
       </form>
     </DialogContent>
