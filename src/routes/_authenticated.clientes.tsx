@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus } from "lucide-react";
+import { Plus, Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/clientes")({
   component: ClientesPage,
@@ -69,20 +69,28 @@ function ClientesPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Clientes</h1>
           <p className="text-sm text-muted-foreground">Listado de profesionales</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4" />
-              Nuevo cliente
+        <div className="flex items-center gap-2">
+          <Link to="/alta-cliente">
+            <Button variant="outline">
+              <Sparkles className="h-4 w-4" />
+              Alta guiada
             </Button>
-          </DialogTrigger>
+          </Link>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4" />
+                Nuevo cliente
+              </Button>
+            </DialogTrigger>
           <NuevoClienteDialog
             onCreated={() => {
               setOpen(false);
               load();
             }}
           />
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       <div className="rounded-lg border bg-card">
