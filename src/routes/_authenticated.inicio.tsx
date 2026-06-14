@@ -8,7 +8,7 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
-import { Users, Workflow, CalendarDays } from "lucide-react";
+import { Users, Workflow, CalendarDays, Trophy } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/inicio")({
   component: InicioPage,
@@ -30,6 +30,14 @@ const ESTADOS: Record<string, string> = {
   cancelada: "Cancelada",
 };
 
+const COLOR_ESTADO: Record<string, string> = {
+  agendada: "bg-blue-500",
+  confirmada: "bg-emerald-500",
+  atendida: "bg-green-600",
+  no_show: "bg-amber-500",
+  cancelada: "bg-rose-500",
+};
+
 function formatFecha(iso: string): string {
   try {
     return new Date(iso).toLocaleString("es-AR", {
@@ -43,40 +51,117 @@ function formatFecha(iso: string): string {
   }
 }
 
+// Una fila de barra horizontal simple
+function BarRow({
+  label,
+  value,
+  max,
+  color,
+}: {
+  label: string;
+  value: number;
+  max: number;
+  color: string;
+}) {
+  const pct = max > 0 ? Math.round((value / max) * 100) : 0;
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between text-sm">
+        <span>{label}</span>
+        <span className="text-muted-foreground tabular-nums">{value}</span>
+      </div>
+      <div className="h-2 rounded-full bg-muted overflow-hidden">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+type Embudo = {
+  enProceso: number;
+  ganados: number;
+  perdidos: number;
+  sinEtapa: number;
+};
+
 function InicioPage() {
   const [clientes, setClientes] = useState(0);
   const [clientesActivos, setClientesActivos] = useState(0);
   const [leadsCount, setLeadsCount] = useState(0);
   const [proximasCount, setProximasCount] = useState(0);
+  const [citasSemana, setCitasSemana] = useState(0);
   const [proximas, setProximas] = useState<CitaProxima[]>([]);
+  const [embudo, setEmbudo] = useState<Embudo>({
+    enProceso: 0,
+    ganados: 0,
+    perdidos: 0,
+    sinEtapa: 0,
+  });
+  const [citasPorEstado, setCitasPorEstado] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const ahora = new Date().toISOString();
+    const ahora = new Date();
+    const ahoraIso = ahora.toISOString();
+    const semanaIso = new Date(ahora.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
     async function load() {
-      const [cTot, cAct, lTot, citasProx, citasCount] = await Promise.all([
-        supabase.from("profesionales").select("*", { count: "exact", head: true }),
-        supabase
-          .from("profesionales")
-          .select("*", { count: "exact", head: true })
-          .eq("estado", "activo"),
-        supabase.from("leads").select("*", { count: "exact", head: true }),
-        supabase
-          .from("citas")
-          .select("id, fecha_hora, estado, profesionales(nombre), leads(nombre)")
-          .gte("fecha_hora", ahora)
-          .order("fecha_hora", { ascending: true })
-          .limit(6),
-        supabase
-          .from("citas")
-          .select("*", { count: "exact", head: true })
-          .gte("fecha_hora", ahora),
-      ]);
+      const [cTot, cAct, leadsRes, citasProx, citasFuturas, citasEstadosRes, citasSemanaRes] =
+        await Promise.all([
+          supabase.from("profesionales").select("*", { count: "exact", head: true }),
+          supabase
+            .from("profesionales")
+            .select("*", { count: "exact", head: true })
+            .eq("estado", "activo"),
+          supabase.from("leads").select("id, etapas_pipeline(tipo)"),
+          supabase
+            .from("citas")
+            .select("id, fecha_hora, estado, profesionales(nombre), leads(nombre)")
+            .gte("fecha_hora", ahoraIso)
+            .order("fecha_hora", { ascending: true })
+            .limit(6),
+          supabase
+            .from("citas")
+            .select("*", { count: "exact", head: true })
+            .gte("fecha_hora", ahoraIso),
+          supabase.from("citas").select("estado"),
+          supabase
+            .from("citas")
+            .select("*", { count: "exact", head: true })
+            .gte("fecha_hora", ahoraIso)
+            .lte("fecha_hora", semanaIso),
+        ]);
+
       setClientes(cTot.count ?? 0);
       setClientesActivos(cAct.count ?? 0);
-      setLeadsCount(lTot.count ?? 0);
       setProximas((citasProx.data ?? []) as CitaProxima[]);
-      setProximasCount(citasCount.count ?? 0);
+      setProximasCount(citasFuturas.count ?? 0);
+      setCitasSemana(citasSemanaRes.count ?? 0);
+
+      // Embudo: agrupar leads por el tipo de su etapa
+      const leadsArr = (leadsRes.data ?? []) as {
+        etapas_pipeline: { tipo: string | null } | null;
+      }[];
+      const emb: Embudo = { enProceso: 0, ganados: 0, perdidos: 0, sinEtapa: 0 };
+      for (const l of leadsArr) {
+        const tipo = l.etapas_pipeline?.tipo;
+        if (!l.etapas_pipeline) emb.sinEtapa++;
+        else if (tipo === "ganado") emb.ganados++;
+        else if (tipo === "perdido") emb.perdidos++;
+        else emb.enProceso++;
+      }
+      setEmbudo(emb);
+      setLeadsCount(leadsArr.length);
+
+      // Citas por estado
+      const citasEst = (citasEstadosRes.data ?? []) as { estado: string | null }[];
+      const porEstado: Record<string, number> = {};
+      for (const c of citasEst) {
+        const k = c.estado ?? "agendada";
+        porEstado[k] = (porEstado[k] ?? 0) + 1;
+      }
+      setCitasPorEstado(porEstado);
+
       setLoading(false);
     }
     load();
@@ -90,29 +175,51 @@ function InicioPage() {
     );
   }
 
+  const cerrados = embudo.ganados + embudo.perdidos;
+  const tasaGanados = cerrados > 0 ? Math.round((embudo.ganados / cerrados) * 100) : null;
+
   const stats = [
     {
       label: "Clientes",
-      valor: clientes,
+      valor: String(clientes),
       detalle: `${clientesActivos} activos`,
       icon: Users,
       to: "/clientes" as const,
     },
     {
       label: "Leads",
-      valor: leadsCount,
+      valor: String(leadsCount),
       detalle: "en todos los embudos",
       icon: Workflow,
       to: "/crm" as const,
     },
     {
       label: "Citas próximas",
-      valor: proximasCount,
-      detalle: "agendadas de acá en más",
+      valor: String(proximasCount),
+      detalle: `${citasSemana} en los próximos 7 días`,
       icon: CalendarDays,
       to: "/agenda" as const,
     },
+    {
+      label: "Tasa de ganados",
+      valor: tasaGanados != null ? `${tasaGanados}%` : "—",
+      detalle:
+        cerrados > 0
+          ? `${embudo.ganados} ganados / ${embudo.perdidos} perdidos`
+          : "sin casos cerrados aún",
+      icon: Trophy,
+      to: "/crm" as const,
+    },
   ];
+
+  const maxEmbudo = Math.max(
+    embudo.enProceso,
+    embudo.ganados,
+    embudo.perdidos,
+    embudo.sinEtapa,
+    1,
+  );
+  const maxCitas = Math.max(1, ...Object.values(citasPorEstado));
 
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-6">
@@ -121,7 +228,7 @@ function InicioPage() {
         <p className="text-sm text-muted-foreground">Resumen de tu operación</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((s) => {
           const Icon = s.icon;
           return (
@@ -141,6 +248,54 @@ function InicioPage() {
             </Link>
           );
         })}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Embudo de leads</CardTitle>
+            <CardDescription>Todos los clientes, por situación.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {leadsCount === 0 ? (
+              <p className="text-sm text-muted-foreground">Todavía no hay leads.</p>
+            ) : (
+              <>
+                <BarRow label="En proceso" value={embudo.enProceso} max={maxEmbudo} color="bg-blue-500" />
+                <BarRow label="Ganados" value={embudo.ganados} max={maxEmbudo} color="bg-emerald-500" />
+                <BarRow label="Perdidos" value={embudo.perdidos} max={maxEmbudo} color="bg-rose-500" />
+                <BarRow
+                  label="Sin etapa"
+                  value={embudo.sinEtapa}
+                  max={maxEmbudo}
+                  color="bg-muted-foreground/40"
+                />
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Citas por estado</CardTitle>
+            <CardDescription>Cómo vienen tus consultas.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {Object.keys(citasPorEstado).length === 0 ? (
+              <p className="text-sm text-muted-foreground">Todavía no hay citas.</p>
+            ) : (
+              Object.keys(ESTADOS).map((k) => (
+                <BarRow
+                  key={k}
+                  label={ESTADOS[k]}
+                  value={citasPorEstado[k] ?? 0}
+                  max={maxCitas}
+                  color={COLOR_ESTADO[k] ?? "bg-primary"}
+                />
+              ))
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <Card>
