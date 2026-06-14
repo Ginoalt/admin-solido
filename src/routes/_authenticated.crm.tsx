@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Plus } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/crm")({
@@ -39,6 +40,15 @@ type Lead = {
   telefono: string | null;
   email: string | null;
   etapa_id: string | null;
+  notas: string | null;
+  datos_extra: Record<string, unknown> | null;
+};
+type Campo = {
+  id: string;
+  nombre: string;
+  clave: string;
+  tipo: string;
+  opciones: string[] | null;
 };
 
 // Plantillas de etapas por rubro (se siembran la primera vez)
@@ -60,9 +70,11 @@ function CrmPage() {
   const [selId, setSelId] = useState<string | null>(null);
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [campos, setCampos] = useState<Campo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openNuevo, setOpenNuevo] = useState(false);
+  const [fichaLead, setFichaLead] = useState<Lead | null>(null);
 
   const seleccionado = useMemo(
     () => profesionales.find((p) => p.id === selId) ?? null,
@@ -89,7 +101,7 @@ function CrmPage() {
   // Cargar etapas + leads del cliente seleccionado
   async function loadTablero(profesionalId: string) {
     setError(null);
-    const [etapasRes, leadsRes] = await Promise.all([
+    const [etapasRes, leadsRes, camposRes] = await Promise.all([
       supabase
         .from("etapas_pipeline")
         .select("id, nombre, orden, color, tipo")
@@ -97,14 +109,20 @@ function CrmPage() {
         .order("orden", { ascending: true }),
       supabase
         .from("leads")
-        .select("id, nombre, telefono, email, etapa_id")
+        .select("id, nombre, telefono, email, etapa_id, notas, datos_extra")
         .eq("profesional_id", profesionalId)
         .order("created_at", { ascending: false }),
+      supabase
+        .from("campos_personalizados")
+        .select("id, nombre, clave, tipo, opciones")
+        .eq("profesional_id", profesionalId)
+        .order("orden", { ascending: true }),
     ]);
     if (etapasRes.error) return setError(etapasRes.error.message);
     if (leadsRes.error) return setError(leadsRes.error.message);
     setEtapas((etapasRes.data ?? []) as Etapa[]);
     setLeads((leadsRes.data ?? []) as Lead[]);
+    setCampos((camposRes.data ?? []) as Campo[]);
   }
 
   useEffect(() => {
@@ -232,10 +250,18 @@ function CrmPage() {
                       key={lead.id}
                       className="rounded-md border bg-card p-3 shadow-sm"
                     >
-                      <p className="text-sm font-medium">{lead.nombre || "Sin nombre"}</p>
-                      {lead.telefono && (
-                        <p className="text-xs text-muted-foreground">{lead.telefono}</p>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => setFichaLead(lead)}
+                        className="block w-full text-left"
+                      >
+                        <p className="text-sm font-medium hover:underline">
+                          {lead.nombre || "Sin nombre"}
+                        </p>
+                        {lead.telefono && (
+                          <p className="text-xs text-muted-foreground">{lead.telefono}</p>
+                        )}
+                      </button>
                       <Select
                         value={lead.etapa_id ?? undefined}
                         onValueChange={(v) => moverLead(lead.id, v)}
@@ -259,6 +285,20 @@ function CrmPage() {
           })}
         </div>
       )}
+
+      <Dialog open={!!fichaLead} onOpenChange={(o) => !o && setFichaLead(null)}>
+        {fichaLead && (
+          <FichaLeadDialog
+            lead={fichaLead}
+            etapas={etapas}
+            campos={campos}
+            onSaved={() => {
+              setFichaLead(null);
+              if (selId) loadTablero(selId);
+            }}
+          />
+        )}
+      </Dialog>
     </div>
   );
 }
@@ -350,6 +390,151 @@ function NuevoLeadDialog({
         <DialogFooter>
           <Button type="submit" disabled={saving}>
             {saving ? "Guardando..." : "Crear lead"}
+          </Button>
+        </DialogFooter>
+      </form>
+    </DialogContent>
+  );
+}
+
+function FichaLeadDialog({
+  lead,
+  etapas,
+  campos,
+  onSaved,
+}: {
+  lead: Lead;
+  etapas: Etapa[];
+  campos: Campo[];
+  onSaved: () => void;
+}) {
+  const [nombre, setNombre] = useState(lead.nombre ?? "");
+  const [telefono, setTelefono] = useState(lead.telefono ?? "");
+  const [email, setEmail] = useState(lead.email ?? "");
+  const [etapaId, setEtapaId] = useState(lead.etapa_id ?? "");
+  const [notas, setNotas] = useState(lead.notas ?? "");
+  const [extra, setExtra] = useState<Record<string, string>>(() => {
+    const base: Record<string, string> = {};
+    const d = (lead.datos_extra ?? {}) as Record<string, unknown>;
+    for (const c of campos) {
+      base[c.clave] = d[c.clave] != null ? String(d[c.clave]) : "";
+    }
+    return base;
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function setCampoValor(clave: string, valor: string) {
+    setExtra((prev) => ({ ...prev, [clave]: valor }));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    const datos_extra: Record<string, string> = {};
+    for (const c of campos) {
+      if (extra[c.clave]) datos_extra[c.clave] = extra[c.clave];
+    }
+    const { error } = await supabase
+      .from("leads")
+      .update({
+        nombre,
+        telefono,
+        email,
+        etapa_id: etapaId || null,
+        notas,
+        datos_extra,
+      })
+      .eq("id", lead.id);
+    setSaving(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    onSaved();
+  }
+
+  return (
+    <DialogContent className="max-h-[85vh] overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle>Ficha del lead</DialogTitle>
+      </DialogHeader>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="ficha-nombre">Nombre</Label>
+          <Input id="ficha-nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="ficha-telefono">Teléfono</Label>
+            <Input id="ficha-telefono" value={telefono} onChange={(e) => setTelefono(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="ficha-email">Email</Label>
+            <Input id="ficha-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="ficha-etapa">Etapa</Label>
+          <Select value={etapaId} onValueChange={setEtapaId}>
+            <SelectTrigger id="ficha-etapa">
+              <SelectValue placeholder="Elegí una etapa" />
+            </SelectTrigger>
+            <SelectContent>
+              {etapas.map((et) => (
+                <SelectItem key={et.id} value={et.id}>
+                  {et.nombre}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {campos.length > 0 && (
+          <div className="space-y-4 border-t pt-4">
+            <p className="text-sm font-medium text-muted-foreground">Campos personalizados</p>
+            {campos.map((c) => (
+              <div key={c.id} className="space-y-2">
+                <Label htmlFor={`campo-${c.clave}`}>{c.nombre}</Label>
+                {c.tipo === "lista" ? (
+                  <Select
+                    value={extra[c.clave] || undefined}
+                    onValueChange={(v) => setCampoValor(c.clave, v)}
+                  >
+                    <SelectTrigger id={`campo-${c.clave}`}>
+                      <SelectValue placeholder="Elegí una opción" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(c.opciones ?? []).map((op) => (
+                        <SelectItem key={op} value={op}>
+                          {op}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    id={`campo-${c.clave}`}
+                    type={c.tipo === "numero" ? "number" : c.tipo === "fecha" ? "date" : "text"}
+                    value={extra[c.clave] ?? ""}
+                    onChange={(e) => setCampoValor(c.clave, e.target.value)}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <Label htmlFor="ficha-notas">Notas</Label>
+          <Textarea id="ficha-notas" rows={3} value={notas} onChange={(e) => setNotas(e.target.value)} />
+        </div>
+
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        <DialogFooter>
+          <Button type="submit" disabled={saving}>
+            {saving ? "Guardando..." : "Guardar"}
           </Button>
         </DialogFooter>
       </form>
