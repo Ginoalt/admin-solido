@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { useMiPerfil } from "@/lib/perfil";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -85,6 +86,7 @@ function AgendaPage() {
   const [openNueva, setOpenNueva] = useState(false);
   const [deleting, setDeleting] = useState<Cita | null>(null);
   const [delErr, setDelErr] = useState<string | null>(null);
+  const { esAdmin } = useMiPerfil();
 
   useEffect(() => {
     supabase
@@ -179,18 +181,20 @@ function AgendaPage() {
           <p className="text-sm text-muted-foreground">Citas agendadas por cliente</p>
         </div>
         <div className="flex items-center gap-2">
-          <Select value={selId ?? undefined} onValueChange={setSelId}>
-            <SelectTrigger className="w-56">
-              <SelectValue placeholder="Elegí un cliente" />
-            </SelectTrigger>
-            <SelectContent>
-              {profesionales.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.nombre}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {esAdmin && (
+            <Select value={selId ?? undefined} onValueChange={setSelId}>
+              <SelectTrigger className="w-56">
+                <SelectValue placeholder="Elegí un cliente" />
+              </SelectTrigger>
+              <SelectContent>
+                {profesionales.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.nombre}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <Dialog open={openNueva} onOpenChange={setOpenNueva}>
             <DialogTrigger asChild>
               <Button>
