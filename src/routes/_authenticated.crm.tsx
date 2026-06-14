@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, CalendarPlus } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/crm")({
   component: CrmPage,
@@ -290,6 +290,7 @@ function CrmPage() {
         {fichaLead && (
           <FichaLeadDialog
             lead={fichaLead}
+            profesionalId={selId!}
             etapas={etapas}
             campos={campos}
             onSaved={() => {
@@ -403,12 +404,14 @@ function NuevoLeadDialog({
 
 function FichaLeadDialog({
   lead,
+  profesionalId,
   etapas,
   campos,
   onSaved,
   onDeleted,
 }: {
   lead: Lead;
+  profesionalId: string;
   etapas: Etapa[];
   campos: Campo[];
   onSaved: () => void;
@@ -436,6 +439,9 @@ function FichaLeadDialog({
 
   const [confirmDel, setConfirmDel] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [fechaCita, setFechaCita] = useState("");
+  const [agendando, setAgendando] = useState(false);
+  const [citaMsg, setCitaMsg] = useState<string | null>(null);
 
   async function handleDelete() {
     setDeleting(true);
@@ -447,6 +453,30 @@ function FichaLeadDialog({
       return;
     }
     onDeleted();
+  }
+
+  async function agendarCita() {
+    if (!fechaCita) {
+      setError("Elegí fecha y hora para la cita.");
+      return;
+    }
+    setAgendando(true);
+    setError(null);
+    setCitaMsg(null);
+    const { error } = await supabase.from("citas").insert({
+      profesional_id: profesionalId,
+      lead_id: lead.id,
+      fecha_hora: new Date(fechaCita).toISOString(),
+      estado: "agendada",
+      origen_agenda: "manual",
+    });
+    setAgendando(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setFechaCita("");
+    setCitaMsg("Cita agendada — la ves en la Agenda de este cliente.");
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -550,6 +580,29 @@ function FichaLeadDialog({
         <div className="space-y-2">
           <Label htmlFor="ficha-notas">Notas</Label>
           <Textarea id="ficha-notas" rows={3} value={notas} onChange={(e) => setNotas(e.target.value)} />
+        </div>
+
+        <div className="space-y-2 border-t pt-4">
+          <Label htmlFor="ficha-cita">Agendar consulta</Label>
+          <div className="flex items-center gap-2">
+            <Input
+              id="ficha-cita"
+              type="datetime-local"
+              value={fechaCita}
+              onChange={(e) => setFechaCita(e.target.value)}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              className="shrink-0"
+              disabled={agendando}
+              onClick={agendarCita}
+            >
+              <CalendarPlus className="h-4 w-4" />
+              {agendando ? "..." : "Agendar"}
+            </Button>
+          </div>
+          {citaMsg && <p className="text-sm text-muted-foreground">{citaMsg}</p>}
         </div>
 
         {error && <p className="text-sm text-destructive">{error}</p>}
