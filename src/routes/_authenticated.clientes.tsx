@@ -37,7 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Sparkles, Pencil, Trash2 } from "lucide-react";
+import { Plus, Sparkles, Pencil, Trash2, KeyRound } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/clientes")({
   component: ClientesPage,
@@ -59,6 +59,7 @@ function ClientesPage() {
   const [editing, setEditing] = useState<Profesional | null>(null);
   const [deleting, setDeleting] = useState<Profesional | null>(null);
   const [delErr, setDelErr] = useState<string | null>(null);
+  const [inviting, setInviting] = useState<Profesional | null>(null);
 
   async function load() {
     setLoading(true);
@@ -132,7 +133,7 @@ function ClientesPage() {
               <TableHead>Rubro</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Estado</TableHead>
-              <TableHead className="w-24 text-right">Acciones</TableHead>
+              <TableHead className="w-32 text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -163,6 +164,9 @@ function ClientesPage() {
                   <TableCell>{r.estado}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="icon" title="Dar acceso" onClick={() => setInviting(r)}>
+                        <KeyRound className="h-4 w-4" />
+                      </Button>
                       <Button variant="ghost" size="icon" onClick={() => setEditing(r)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -192,6 +196,22 @@ function ClientesPage() {
                 setEditing(null);
                 load();
               }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Invitar cliente (dar acceso) */}
+      <Dialog open={!!inviting} onOpenChange={(o) => !o && setInviting(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Dar acceso a {inviting?.nombre}</DialogTitle>
+          </DialogHeader>
+          {inviting && (
+            <InvitarClienteDialog
+              key={inviting.id}
+              cliente={inviting}
+              onDone={() => setInviting(null)}
             />
           )}
         </DialogContent>
@@ -296,6 +316,114 @@ function ClienteForm({
       <DialogFooter>
         <Button type="submit" disabled={saving}>
           {saving ? "Guardando..." : initial ? "Guardar cambios" : "Crear"}
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+}
+
+function InvitarClienteDialog({
+  cliente,
+  onDone,
+}: {
+  cliente: Profesional;
+  onDone: () => void;
+}) {
+  const [email, setEmail] = useState(cliente.email_contacto ?? "");
+  const [nombre, setNombre] = useState(cliente.nombre ?? "");
+  const [password, setPassword] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [listo, setListo] = useState(false);
+
+  function generar() {
+    const chars = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let p = "";
+    for (let i = 0; i < 10; i++) p += chars[Math.floor(Math.random() * chars.length)];
+    setPassword(p);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email || password.length < 6) {
+      setError("Necesito el email y una contraseña de al menos 6 caracteres.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    const { data, error } = await supabase.functions.invoke("invitar-cliente", {
+      body: { email, password, nombre, profesional_id: cliente.id },
+    });
+    setSaving(false);
+    if (error) {
+      setError("No se pudo crear el acceso. Revisá que la función esté desplegada.");
+      return;
+    }
+    if (!data?.ok) {
+      setError(data?.error ?? "No se pudo crear el acceso.");
+      return;
+    }
+    setListo(true);
+  }
+
+  if (listo) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm">
+          ✅ Acceso creado. Pasale estos datos al cliente para que entre:
+        </p>
+        <div className="rounded-md border bg-muted/40 p-3 text-sm space-y-1">
+          <p>
+            <span className="text-muted-foreground">Email:</span> {email}
+          </p>
+          <p>
+            <span className="text-muted-foreground">Contraseña:</span> {password}
+          </p>
+        </div>
+        <DialogFooter>
+          <Button onClick={onDone}>Listo</Button>
+        </DialogFooter>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Le creás un usuario para que entre y vea <strong>solo su propio</strong> CRM y agenda.
+      </p>
+      <div className="space-y-2">
+        <Label htmlFor="inv-email">Email del cliente</Label>
+        <Input
+          id="inv-email"
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="inv-nombre">Nombre</Label>
+        <Input id="inv-nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="inv-pass">Contraseña</Label>
+        <div className="flex gap-2">
+          <Input
+            id="inv-pass"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="mínimo 6 caracteres"
+          />
+          <Button type="button" variant="outline" className="shrink-0" onClick={generar}>
+            Generar
+          </Button>
+        </div>
+      </div>
+      {error && <p className="text-sm text-destructive">{error}</p>}
+      <DialogFooter>
+        <Button type="submit" disabled={saving}>
+          {saving ? "Creando acceso..." : "Crear acceso"}
         </Button>
       </DialogFooter>
     </form>
