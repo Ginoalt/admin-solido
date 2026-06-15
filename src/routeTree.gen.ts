@@ -18,6 +18,7 @@ import { Route as AuthenticatedConfiguracionRouteImport } from './routes/_authen
 import { Route as AuthenticatedAltaClienteRouteImport } from './routes/_authenticated.alta-cliente'
 import { Route as AuthenticatedAgendaRouteImport } from './routes/_authenticated.agenda'
 import { Route as AuthenticatedChatsRouteImport } from './routes/_authenticated.chats'
+import { Route as AuthenticatedResumenRouteImport } from './routes/_authenticated.resumen'
 import { Route as AuthenticatedInicioRouteImport } from './routes/_authenticated.inicio'
 
 const LoginRoute = LoginRouteImport.update({
@@ -64,6 +65,11 @@ const AuthenticatedChatsRoute = AuthenticatedChatsRouteImport.update({
   path: '/chats',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedResumenRoute = AuthenticatedResumenRouteImport.update({
+  id: '/resumen',
+  path: '/resumen',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedInicioRoute = AuthenticatedInicioRouteImport.update({
   id: '/inicio',
   path: '/inicio',
@@ -79,6 +85,7 @@ export interface FileRoutesByFullPath {
   '/alta-cliente': typeof AuthenticatedAltaClienteRoute
   '/agenda': typeof AuthenticatedAgendaRoute
   '/chats': typeof AuthenticatedChatsRoute
+  '/resumen': typeof AuthenticatedResumenRoute
   '/inicio': typeof AuthenticatedInicioRoute
 }
 export interface FileRoutesByTo {
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/alta-cliente': typeof AuthenticatedAltaClienteRoute
   '/agenda': typeof AuthenticatedAgendaRoute
   '/chats': typeof AuthenticatedChatsRoute
+  '/resumen': typeof AuthenticatedResumenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -102,6 +110,7 @@ export interface FileRoutesById {
   '/_authenticated/alta-cliente': typeof AuthenticatedAltaClienteRoute
   '/_authenticated/agenda': typeof AuthenticatedAgendaRoute
   '/_authenticated/chats': typeof AuthenticatedChatsRoute
+  '/_authenticated/resumen': typeof AuthenticatedResumenRoute
   '/_authenticated/inicio': typeof AuthenticatedInicioRoute
 }
 export interface FileRouteTypes {
@@ -115,6 +124,7 @@ export interface FileRouteTypes {
     | '/alta-cliente'
     | '/agenda'
     | '/chats'
+    | '/resumen'
     | '/inicio'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -126,6 +136,7 @@ export interface FileRouteTypes {
     | '/alta-cliente'
     | '/agenda'
     | '/chats'
+    | '/resumen'
     | '/inicio'
   id:
     | '__root__'
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '/_authenticated/alta-cliente'
     | '/_authenticated/agenda'
     | '/_authenticated/chats'
+    | '/_authenticated/resumen'
     | '/_authenticated/inicio'
   fileRoutesById: FileRoutesById
 }
@@ -212,6 +224,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedChatsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/resumen': {
+      id: '/_authenticated/resumen'
+      path: '/resumen'
+      fullPath: '/resumen'
+      preLoaderRoute: typeof AuthenticatedResumenRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/inicio': {
       id: '/_authenticated/inicio'
       path: '/inicio'
@@ -229,6 +248,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAltaClienteRoute: typeof AuthenticatedAltaClienteRoute
   AuthenticatedAgendaRoute: typeof AuthenticatedAgendaRoute
   AuthenticatedChatsRoute: typeof AuthenticatedChatsRoute
+  AuthenticatedResumenRoute: typeof AuthenticatedResumenRoute
   AuthenticatedInicioRoute: typeof AuthenticatedInicioRoute
 }
 
@@ -239,6 +259,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAltaClienteRoute: AuthenticatedAltaClienteRoute,
   AuthenticatedAgendaRoute: AuthenticatedAgendaRoute,
   AuthenticatedChatsRoute: AuthenticatedChatsRoute,
+  AuthenticatedResumenRoute: AuthenticatedResumenRoute,
   AuthenticatedInicioRoute: AuthenticatedInicioRoute,
 }
 
