@@ -12,16 +12,22 @@ export const Route = createFileRoute("/_authenticated")({
 
 const nav = [
   { to: "/inicio", label: "Inicio", icon: LayoutDashboard, adminOnly: false },
-  { to: "/resumen", label: "Resumen", icon: TrendingUp, adminOnly: false },
+  { to: "/resumen", label: "Resumen", icon: TrendingUp, adminOnly: false, modulo: "resumen" },
   { to: "/clientes", label: "Clientes", icon: Users, adminOnly: true },
-  { to: "/crm", label: "CRM", icon: Workflow, adminOnly: false },
-  { to: "/chats", label: "Chats", icon: MessageSquare, adminOnly: false },
-  { to: "/agenda", label: "Agenda", icon: CalendarDays, adminOnly: false },
+  { to: "/crm", label: "CRM", icon: Workflow, adminOnly: false, modulo: "crm" },
+  { to: "/chats", label: "Chats", icon: MessageSquare, adminOnly: false, modulo: "chats" },
+  { to: "/agenda", label: "Agenda", icon: CalendarDays, adminOnly: false, modulo: "agenda" },
   { to: "/configuracion", label: "Configuración", icon: Settings, adminOnly: true },
 ];
 
 // Secciones que solo puede ver el admin (Gino). Si un cliente las pide, lo mandamos al inicio.
 const RUTAS_ADMIN = ["/clientes", "/configuracion", "/alta-cliente"];
+
+// Un módulo está activo salvo que el admin lo haya apagado para ese cliente (el "telón").
+function moduloActivo(modulos: Record<string, boolean> | undefined, key?: string) {
+  if (!key) return true;
+  return modulos?.[key] !== false;
+}
 
 function AuthLayout() {
   const navigate = useNavigate();
@@ -44,13 +50,15 @@ function AuthLayout() {
     return () => sub.subscription.unsubscribe();
   }, [navigate]);
 
-  // Candado de navegación: un cliente no entra a las secciones de admin.
+  // Candado de navegación: un cliente no entra a secciones de admin ni a módulos apagados.
   useEffect(() => {
-    if (perfilLoading) return;
-    if (!esAdmin && RUTAS_ADMIN.some((p) => pathname.startsWith(p))) {
-      navigate({ to: "/inicio" });
-    }
-  }, [perfilLoading, esAdmin, pathname, navigate]);
+    if (perfilLoading || esAdmin) return;
+    const bloqueadaAdmin = RUTAS_ADMIN.some((p) => pathname.startsWith(p));
+    const moduloApagado = nav.some(
+      (i) => i.modulo && !moduloActivo(perfil?.modulos, i.modulo) && pathname.startsWith(i.to),
+    );
+    if (bloqueadaAdmin || moduloApagado) navigate({ to: "/inicio" });
+  }, [perfilLoading, esAdmin, pathname, perfil, navigate]);
 
   async function handleLogout() {
     clearPerfilCache();
@@ -82,7 +90,11 @@ function AuthLayout() {
       </div>
     );
 
-  const items = nav.filter((item) => esAdmin || !item.adminOnly);
+  const items = nav.filter((item) => {
+    if (esAdmin) return true;
+    if (item.adminOnly) return false;
+    return moduloActivo(perfil?.modulos, item.modulo);
+  });
 
   return (
     <div className="min-h-screen flex bg-muted/20">

@@ -7,6 +7,7 @@ export type MiPerfil = {
   rol: string;
   profesional_id: string | null;
   estado: string | null;
+  modulos: Record<string, boolean>;
 };
 
 // Cache en memoria para no re-consultar en cada pantalla durante la sesión.
@@ -36,17 +37,26 @@ export function useMiPerfil() {
       }
       const { data } = await supabase
         .from("perfiles")
-        .select("rol, profesional_id, profesionales(estado)")
+        .select("rol, profesional_id, profesionales(estado, modulos)")
         .eq("id", user.id)
         .maybeSingle();
       // Si no hay perfil cargado, por las dudas lo tratamos como cliente sin ficha
       // (no ve nada de admin). El admin se define explícitamente con rol = 'admin'.
       const row = data as
-        | { rol: string; profesional_id: string | null; profesionales: { estado: string | null } | null }
+        | {
+            rol: string;
+            profesional_id: string | null;
+            profesionales: { estado: string | null; modulos: Record<string, boolean> | null } | null;
+          }
         | null;
       cache = row
-        ? { rol: row.rol, profesional_id: row.profesional_id, estado: row.profesionales?.estado ?? null }
-        : { rol: "cliente", profesional_id: null, estado: null };
+        ? {
+            rol: row.rol,
+            profesional_id: row.profesional_id,
+            estado: row.profesionales?.estado ?? null,
+            modulos: row.profesionales?.modulos ?? {},
+          }
+        : { rol: "cliente", profesional_id: null, estado: null, modulos: {} };
       if (activo) {
         setPerfil(cache);
         setLoading(false);
