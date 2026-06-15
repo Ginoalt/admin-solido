@@ -18,6 +18,7 @@ import {
   Target,
   ArrowRight,
 } from "lucide-react";
+import { AsistenteIA } from "@/components/asistente-ia";
 
 export const Route = createFileRoute("/_authenticated/inicio")({
   component: InicioPage,
@@ -468,6 +469,8 @@ function InicioPage() {
           </CardContent>
         </Card>
       </div>
+
+      <AsistenteIA />
     </div>
   );
 }
