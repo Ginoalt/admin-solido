@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2, CalendarPlus } from "lucide-react";
+import { Plus, Trash2, CalendarPlus, Search } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/crm")({
   component: CrmPage,
@@ -66,6 +66,15 @@ function tipoDeEtapa(nombre: string): string {
   return "normal";
 }
 
+// ¿El lead coincide con lo que se está buscando? (nombre / teléfono / email)
+function leadCoincide(lead: Lead, q: string): boolean {
+  const t = q.trim().toLowerCase();
+  if (!t) return true;
+  return [lead.nombre, lead.telefono, lead.email].some((v) =>
+    (v ?? "").toLowerCase().includes(t),
+  );
+}
+
 function CrmPage() {
   const [profesionales, setProfesionales] = useState<Profesional[]>([]);
   const [selId, setSelId] = useState<string | null>(null);
@@ -78,6 +87,7 @@ function CrmPage() {
   const [fichaLead, setFichaLead] = useState<Lead | null>(null);
   const [dragLeadId, setDragLeadId] = useState<string | null>(null);
   const [dragOverEtapa, setDragOverEtapa] = useState<string | null>(null);
+  const [q, setQ] = useState("");
 
   const { esAdmin } = useMiPerfil();
 
@@ -228,6 +238,18 @@ function CrmPage() {
         </div>
       </div>
 
+      {etapas.length > 0 && (
+        <div className="relative mb-4 max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar lead por nombre o teléfono..."
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+      )}
+
       {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
 
       {etapas.length === 0 ? (
@@ -242,7 +264,9 @@ function CrmPage() {
       ) : (
         <div className="flex gap-4 overflow-x-auto pb-4">
           {etapas.map((etapa) => {
-            const leadsEtapa = leads.filter((l) => l.etapa_id === etapa.id);
+            const leadsEtapa = leads.filter(
+              (l) => l.etapa_id === etapa.id && leadCoincide(l, q),
+            );
             return (
               <div key={etapa.id} className="w-72 shrink-0">
                 <div className="flex items-center justify-between px-1 mb-2">
