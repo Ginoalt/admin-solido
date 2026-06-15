@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useMiPerfil } from "@/lib/perfil";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2, CalendarPlus, Search } from "lucide-react";
+import { Plus, Trash2, CalendarPlus, Search, MessageCircle, Download, Upload } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/crm")({
   component: CrmPage,
@@ -75,6 +75,54 @@ function leadCoincide(lead: Lead, q: string): boolean {
   );
 }
 
+// Link de WhatsApp (wa.me) a partir del teléfono del lead
+function waLink(telefono: string | null, nombre: string | null): string | null {
+  const num = (telefono ?? "").replace(/\D/g, "");
+  if (!num) return null;
+  const saludo = nombre ? `Hola ${nombre}!` : "Hola!";
+  return `https://wa.me/${num}?text=${encodeURIComponent(saludo)}`;
+}
+
+function escaparCSV(v: unknown): string {
+  const s = v == null ? "" : String(v);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+// Parser de CSV que respeta comillas y comas dentro de los campos
+function parseCSV(texto: string): string[][] {
+  const filas: string[][] = [];
+  let campo = "";
+  let fila: string[] = [];
+  let enComillas = false;
+  for (let i = 0; i < texto.length; i++) {
+    const c = texto[i];
+    if (enComillas) {
+      if (c === '"') {
+        if (texto[i + 1] === '"') {
+          campo += '"';
+          i++;
+        } else enComillas = false;
+      } else campo += c;
+    } else if (c === '"') {
+      enComillas = true;
+    } else if (c === ",") {
+      fila.push(campo);
+      campo = "";
+    } else if (c === "\n" || c === "\r") {
+      if (c === "\r" && texto[i + 1] === "\n") i++;
+      fila.push(campo);
+      campo = "";
+      if (fila.some((x) => x !== "")) filas.push(fila);
+      fila = [];
+    } else campo += c;
+  }
+  if (campo !== "" || fila.length) {
+    fila.push(campo);
+    if (fila.some((x) => x !== "")) filas.push(fila);
+  }
+  return filas;
+}
+
 // Color de cada etapa según su tipo (para el encabezado del Kanban)
 const COLOR_ETAPA: Record<string, { dot: string; pill: string }> = {
   ganado: { dot: "bg-emerald-500", pill: "bg-emerald-100 text-emerald-700" },
@@ -95,6 +143,8 @@ function CrmPage() {
   const [dragLeadId, setDragLeadId] = useState<string | null>(null);
   const [dragOverEtapa, setDragOverEtapa] = useState<string | null>(null);
   const [q, setQ] = useState("");
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const { esAdmin } = useMiPerfil();
 
@@ -182,6 +232,73 @@ function CrmPage() {
     if (error && selId) loadTablero(selId);
   }
 
+  // Exportar los leads del cliente a un CSV (abre en Excel)
+  function exportarCSV() {
+    const nombreEtapa = (id: string | null) => etapas.find((e) => e.id === id)?.nombre ?? "";
+    const cols = ["Nombre", "Teléfono", "Email", "Etapa", ...campos.map((c) => c.nombre)];
+    const filas = leads.map((l) => {
+      const d = (l.datos_extra ?? {}) as Record<string, unknown>;
+      const base = [l.nombre, l.telefono, l.email, nombreEtapa(l.etapa_id)];
+      const extra = campos.map((c) => d[c.clave] ?? "");
+      return [...base, ...extra].map(escaparCSV).join(",");
+    });
+    const csv = [cols.map(escaparCSV).join(","), ...filas].join("\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `leads-${seleccionado?.nombre ?? "cliente"}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // Importar leads desde un CSV (columnas Nombre / Teléfono / Email + campos)
+  async function importarCSV(file: File) {
+    if (!selId) return;
+    setImportMsg(null);
+    const filas = parseCSV(await file.text());
+    if (filas.length < 2) {
+      setImportMsg("El archivo no tiene filas para importar.");
+      return;
+    }
+    const header = filas[0].map((h) => h.trim().toLowerCase());
+    const buscar = (...nombres: string[]) => header.findIndex((h) => nombres.includes(h));
+    const iNombre = buscar("nombre", "name");
+    const iTel = buscar("teléfono", "telefono", "phone", "celular", "whatsapp");
+    const iEmail = buscar("email", "correo", "mail", "e-mail");
+    const primeraEtapa = etapas[0]?.id ?? null;
+    const nuevos = filas
+      .slice(1)
+      .map((f) => {
+        const datos_extra: Record<string, string> = {};
+        for (const c of campos) {
+          const ci = header.indexOf(c.nombre.trim().toLowerCase());
+          if (ci >= 0 && f[ci]) datos_extra[c.clave] = f[ci];
+        }
+        return {
+          profesional_id: selId,
+          nombre: iNombre >= 0 ? f[iNombre] || null : null,
+          telefono: iTel >= 0 ? f[iTel] || null : null,
+          email: iEmail >= 0 ? f[iEmail] || null : null,
+          etapa_id: primeraEtapa,
+          origen: "import",
+          datos_extra,
+        };
+      })
+      .filter((n) => n.nombre || n.telefono || n.email);
+    if (nuevos.length === 0) {
+      setImportMsg("No encontré columnas Nombre / Teléfono / Email en el archivo.");
+      return;
+    }
+    const { error } = await supabase.from("leads").insert(nuevos);
+    if (error) {
+      setImportMsg(error.message);
+      return;
+    }
+    setImportMsg(`✓ ${nuevos.length} leads importados.`);
+    loadTablero(selId);
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">
@@ -225,6 +342,29 @@ function CrmPage() {
             </Select>
           )}
           {etapas.length > 0 && (
+            <>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) importarCSV(f);
+                  e.target.value = "";
+                }}
+              />
+              <Button variant="outline" onClick={() => fileRef.current?.click()}>
+                <Upload className="h-4 w-4" />
+                Importar
+              </Button>
+              <Button variant="outline" onClick={exportarCSV} disabled={leads.length === 0}>
+                <Download className="h-4 w-4" />
+                Exportar
+              </Button>
+            </>
+          )}
+          {etapas.length > 0 && (
             <Dialog open={openNuevo} onOpenChange={setOpenNuevo}>
               <DialogTrigger asChild>
                 <Button>
@@ -258,6 +398,7 @@ function CrmPage() {
       )}
 
       {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
+      {importMsg && <p className="mb-4 text-sm text-muted-foreground">{importMsg}</p>}
 
       {etapas.length === 0 ? (
         <div className="rounded-lg border bg-card p-10 text-center">
@@ -344,6 +485,18 @@ function CrmPage() {
                           <p className="text-xs text-muted-foreground">{lead.telefono}</p>
                         )}
                       </button>
+                      {waLink(lead.telefono, lead.nombre) && (
+                        <a
+                          href={waLink(lead.telefono, lead.nombre)!}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="mt-2 inline-flex items-center gap-1 text-xs text-emerald-600 hover:underline"
+                        >
+                          <MessageCircle className="h-3.5 w-3.5" />
+                          WhatsApp
+                        </a>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -593,6 +746,17 @@ function FichaLeadDialog({
             <Input id="ficha-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
         </div>
+        {waLink(telefono, nombre) && (
+          <a
+            href={waLink(telefono, nombre)!}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
+          >
+            <MessageCircle className="h-4 w-4" />
+            Abrir WhatsApp
+          </a>
+        )}
         <div className="space-y-2">
           <Label htmlFor="ficha-etapa">Etapa</Label>
           <Select value={etapaId} onValueChange={setEtapaId}>
