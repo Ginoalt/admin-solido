@@ -60,6 +60,64 @@ const PLANTILLAS: Record<string, Plantilla> = {
         "Sos el asistente de un consultorio médico. Sé cordial y claro. Ayudá a agendar turnos. No des diagnósticos ni indicaciones médicas; derivá siempre al profesional.",
     },
   },
+  inmobiliaria: {
+    etapas: ["Consulta", "Visita", "Reserva", "Cerrado", "Perdido"],
+    campos: [
+      { nombre: "Tipo de propiedad", tipo: "lista", opciones: ["Departamento", "Casa", "Local", "Terreno"] },
+      { nombre: "Operación", tipo: "lista", opciones: ["Venta", "Alquiler"] },
+      { nombre: "Zona", tipo: "texto", opciones: [] },
+      { nombre: "Presupuesto", tipo: "texto", opciones: [] },
+    ],
+    bot: {
+      nombre_bot: "Asistente Inmobiliario",
+      mensaje_bienvenida:
+        "Hola 👋 Soy el asistente de la inmobiliaria. ¿Qué propiedad estás buscando?",
+      instrucciones:
+        "Sos el asistente de una inmobiliaria. Ayudá a entender qué busca el cliente (tipo de propiedad, zona, presupuesto, venta o alquiler) y ofrecé agendar una visita. Sé cordial y concreto.",
+    },
+  },
+  gimnasio: {
+    etapas: ["Consulta", "Clase de prueba", "Inscripto", "Baja"],
+    campos: [
+      { nombre: "Plan", tipo: "lista", opciones: ["Mensual", "Trimestral", "Anual"] },
+      { nombre: "Objetivo", tipo: "texto", opciones: [] },
+      { nombre: "Vencimiento", tipo: "fecha", opciones: [] },
+    ],
+    bot: {
+      nombre_bot: "Asistente del Gym",
+      mensaje_bienvenida: "Hola 👋 ¿Querés info de planes o agendar una clase de prueba?",
+      instrucciones:
+        "Sos el asistente de un gimnasio/estudio. Informá sobre planes y horarios y ofrecé agendar una clase de prueba. Sé motivador y cercano.",
+    },
+  },
+  comercio: {
+    etapas: ["Contacto", "Presupuesto", "Negociación", "Venta", "Perdido"],
+    campos: [
+      { nombre: "Producto/Servicio", tipo: "texto", opciones: [] },
+      { nombre: "Monto estimado", tipo: "texto", opciones: [] },
+      { nombre: "Origen", tipo: "lista", opciones: ["Instagram", "WhatsApp", "Recomendación", "Web"] },
+    ],
+    bot: {
+      nombre_bot: "Asistente de Ventas",
+      mensaje_bienvenida: "Hola 👋 ¿En qué producto o servicio estás interesado?",
+      instrucciones:
+        "Sos el asistente de un comercio/PyME. Respondé consultas sobre productos y precios y ofrecé pasar un presupuesto o agendar. Sé claro y orientado a la venta sin ser invasivo.",
+    },
+  },
+  estetica: {
+    etapas: ["Consulta", "Turno", "Atendido", "No asistió"],
+    campos: [
+      { nombre: "Tratamiento", tipo: "texto", opciones: [] },
+      { nombre: "Zona a tratar", tipo: "texto", opciones: [] },
+    ],
+    bot: {
+      nombre_bot: "Asistente del Centro",
+      mensaje_bienvenida:
+        "Hola 👋 ¿Qué tratamiento te interesa? Te ayudo a reservar un turno.",
+      instrucciones:
+        "Sos el asistente de un centro de estética/salud. Informá sobre tratamientos y ofrecé reservar un turno. Sé cordial y cuidadoso; no des indicaciones médicas, derivá al profesional.",
+    },
+  },
   otro: {
     etapas: ["Nuevo", "En proceso", "Ganado", "Perdido"],
     campos: [],
@@ -74,8 +132,23 @@ const PLANTILLAS: Record<string, Plantilla> = {
 
 function tipoDeEtapa(nombre: string): string {
   const n = nombre.toLowerCase();
-  if (n.includes("ganado") || n.includes("contrato") || n.includes("atendido")) return "ganado";
-  if (n.includes("perdido") || n.includes("no asist")) return "perdido";
+  if (
+    n.includes("ganado") ||
+    n.includes("contrato") ||
+    n.includes("atendido") ||
+    n.includes("cerrado") ||
+    n.includes("inscripto") ||
+    n.includes("venta") ||
+    n.includes("vendido")
+  )
+    return "ganado";
+  if (
+    n.includes("perdido") ||
+    n.includes("no asist") ||
+    n.includes("baja") ||
+    n.includes("cancelad")
+  )
+    return "perdido";
   return "normal";
 }
 
@@ -231,6 +304,10 @@ function AltaClientePage() {
                     <SelectContent>
                       <SelectItem value="abogado">Abogado</SelectItem>
                       <SelectItem value="medico">Médico</SelectItem>
+                      <SelectItem value="inmobiliaria">Inmobiliaria</SelectItem>
+                      <SelectItem value="gimnasio">Gimnasio / Estudio</SelectItem>
+                      <SelectItem value="comercio">Comercio / PyME</SelectItem>
+                      <SelectItem value="estetica">Estética / Salud</SelectItem>
                       <SelectItem value="otro">Otro</SelectItem>
                     </SelectContent>
                   </Select>
