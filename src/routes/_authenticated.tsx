@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, Link, useNavigate, useRouterState } from "@tan
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useMiPerfil, clearPerfilCache } from "@/lib/perfil";
-import { LayoutDashboard, Users, Workflow, CalendarDays, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, Workflow, CalendarDays, MessageSquare, Settings, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -14,6 +14,7 @@ const nav = [
   { to: "/inicio", label: "Inicio", icon: LayoutDashboard, adminOnly: false },
   { to: "/clientes", label: "Clientes", icon: Users, adminOnly: true },
   { to: "/crm", label: "CRM", icon: Workflow, adminOnly: false },
+  { to: "/chats", label: "Chats", icon: MessageSquare, adminOnly: false },
   { to: "/agenda", label: "Agenda", icon: CalendarDays, adminOnly: false },
   { to: "/configuracion", label: "Configuración", icon: Settings, adminOnly: true },
 ];
