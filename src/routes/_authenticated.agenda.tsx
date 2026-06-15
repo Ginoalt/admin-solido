@@ -62,6 +62,14 @@ const ESTADOS: Record<string, string> = {
   cancelada: "Cancelada",
 };
 
+const COLOR_ESTADO: Record<string, string> = {
+  agendada: "bg-blue-500",
+  confirmada: "bg-emerald-500",
+  atendida: "bg-green-600",
+  no_show: "bg-amber-500",
+  cancelada: "bg-rose-500",
+};
+
 function formatFecha(iso: string): string {
   try {
     return new Date(iso).toLocaleString("es-AR", {
@@ -240,13 +248,19 @@ function AgendaPage() {
                   <TableCell className="font-medium">{formatFecha(c.fecha_hora)}</TableCell>
                   <TableCell>{leadNombre(c.lead_id)}</TableCell>
                   <TableCell>
-                    <Select
-                      value={c.estado ?? "agendada"}
-                      onValueChange={(v) => cambiarEstado(c.id, v)}
-                    >
-                      <SelectTrigger className="h-8 w-36 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`h-2 w-2 shrink-0 rounded-full ${
+                          COLOR_ESTADO[c.estado ?? "agendada"] ?? "bg-muted-foreground"
+                        }`}
+                      />
+                      <Select
+                        value={c.estado ?? "agendada"}
+                        onValueChange={(v) => cambiarEstado(c.id, v)}
+                      >
+                        <SelectTrigger className="h-8 w-36 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
                       <SelectContent>
                         {Object.entries(ESTADOS).map(([value, label]) => (
                           <SelectItem key={value} value={value} className="text-xs">
@@ -254,7 +268,8 @@ function AgendaPage() {
                           </SelectItem>
                         ))}
                       </SelectContent>
-                    </Select>
+                      </Select>
+                    </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
                     {c.origen_agenda ?? "manual"}

@@ -75,6 +75,13 @@ function leadCoincide(lead: Lead, q: string): boolean {
   );
 }
 
+// Color de cada etapa según su tipo (para el encabezado del Kanban)
+const COLOR_ETAPA: Record<string, { dot: string; pill: string }> = {
+  ganado: { dot: "bg-emerald-500", pill: "bg-emerald-100 text-emerald-700" },
+  perdido: { dot: "bg-rose-500", pill: "bg-rose-100 text-rose-700" },
+  normal: { dot: "bg-blue-500", pill: "bg-blue-100 text-blue-700" },
+};
+
 function CrmPage() {
   const [profesionales, setProfesionales] = useState<Profesional[]>([]);
   const [selId, setSelId] = useState<string | null>(null);
@@ -267,11 +274,15 @@ function CrmPage() {
             const leadsEtapa = leads.filter(
               (l) => l.etapa_id === etapa.id && leadCoincide(l, q),
             );
+            const col = COLOR_ETAPA[etapa.tipo ?? "normal"] ?? COLOR_ETAPA.normal;
             return (
               <div key={etapa.id} className="w-72 shrink-0">
                 <div className="flex items-center justify-between px-1 mb-2">
-                  <span className="text-sm font-medium">{etapa.nombre}</span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="flex items-center gap-2 text-sm font-medium">
+                    <span className={`h-2.5 w-2.5 rounded-full ${col.dot}`} />
+                    {etapa.nombre}
+                  </span>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${col.pill}`}>
                     {leadsEtapa.length}
                   </span>
                 </div>

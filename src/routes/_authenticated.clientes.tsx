@@ -51,6 +51,12 @@ type Profesional = {
   estado: string | null;
 };
 
+const ESTADO_COLOR: Record<string, string> = {
+  activo: "bg-emerald-100 text-emerald-700",
+  prueba: "bg-amber-100 text-amber-700",
+  pausado: "bg-muted text-muted-foreground",
+};
+
 function ClientesPage() {
   const [rows, setRows] = useState<Profesional[]>([]);
   const [loading, setLoading] = useState(true);
@@ -180,7 +186,15 @@ function ClientesPage() {
                   <TableCell className="font-medium">{r.nombre}</TableCell>
                   <TableCell>{r.rubro}</TableCell>
                   <TableCell>{r.email_contacto}</TableCell>
-                  <TableCell>{r.estado}</TableCell>
+                  <TableCell>
+                    <span
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${
+                        ESTADO_COLOR[r.estado ?? ""] ?? "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {r.estado}
+                    </span>
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
                       <Button variant="ghost" size="icon" title="Dar acceso" onClick={() => setInviting(r)}>
