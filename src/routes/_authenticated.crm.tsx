@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, CalendarPlus, Search, MessageCircle, Download, Upload } from "lucide-react";
+import { TareasLead } from "@/components/tareas-lead";
 
 export const Route = createFileRoute("/_authenticated/crm")({
   component: CrmPage,
@@ -812,6 +813,8 @@ function FichaLeadDialog({
           <Label htmlFor="ficha-notas">Notas</Label>
           <Textarea id="ficha-notas" rows={3} value={notas} onChange={(e) => setNotas(e.target.value)} />
         </div>
+
+        <TareasLead profesionalId={profesionalId} leadId={lead.id} />
 
         <div className="space-y-2 border-t pt-4">
           <Label htmlFor="ficha-cita">Agendar consulta</Label>

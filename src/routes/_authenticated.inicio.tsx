@@ -32,6 +32,13 @@ type CitaProxima = {
   leads: { nombre: string | null } | null;
 };
 
+type TareaPend = {
+  id: string;
+  titulo: string;
+  vence: string | null;
+  leads: { nombre: string | null } | null;
+};
+
 const ESTADOS: Record<string, string> = {
   agendada: "Agendada",
   confirmada: "Confirmada",
@@ -140,6 +147,7 @@ function InicioPage() {
   const [porDia, setPorDia] = useState<number[]>([0, 0, 0, 0, 0, 0, 0]);
   const [proximas, setProximas] = useState<CitaProxima[]>([]);
   const [sinMarcar, setSinMarcar] = useState<CitaProxima[]>([]);
+  const [pendientes, setPendientes] = useState<TareaPend[]>([]);
 
   useEffect(() => {
     const ahora = new Date();
@@ -147,7 +155,8 @@ function InicioPage() {
     const semanaIso = new Date(ahora.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
     async function load() {
-      const [cTot, leadsRes, citasRes, proximasRes, sinMarcarRes, proxCount] = await Promise.all([
+      const [cTot, leadsRes, citasRes, proximasRes, sinMarcarRes, proxCount, tareasRes] =
+        await Promise.all([
         supabase.from("profesionales").select("*", { count: "exact", head: true }),
         supabase.from("leads").select("etapa_id, etapas_pipeline(nombre, orden, tipo)"),
         supabase.from("citas").select("fecha_hora, estado"),
@@ -169,12 +178,19 @@ function InicioPage() {
           .select("*", { count: "exact", head: true })
           .gte("fecha_hora", ahoraIso)
           .lte("fecha_hora", semanaIso),
+        supabase
+          .from("tareas")
+          .select("id, titulo, vence, leads(nombre)")
+          .eq("hecha", false)
+          .order("vence", { ascending: true, nullsFirst: false })
+          .limit(8),
       ]);
 
       setClientes(cTot.count ?? 0);
       setProximas((proximasRes.data ?? []) as CitaProxima[]);
       setSinMarcar((sinMarcarRes.data ?? []) as CitaProxima[]);
       setProximasCount(proxCount.count ?? 0);
+      setPendientes((tareasRes.data ?? []) as TareaPend[]);
 
       // Pipeline por etapa (agrupado por nombre, conservando orden y tipo)
       const leadsArr = (leadsRes.data ?? []) as {
@@ -240,6 +256,11 @@ function InicioPage() {
     load();
   }, []);
 
+  async function completarTarea(id: string) {
+    setPendientes((prev) => prev.filter((t) => t.id !== id));
+    await supabase.from("tareas").update({ hecha: true }).eq("id", id);
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">
@@ -250,6 +271,7 @@ function InicioPage() {
 
   const conResultado = atendidas + noShow;
   const tasaAsistencia = conResultado > 0 ? Math.round((atendidas / conResultado) * 100) : 0;
+  const hoyStr = new Date().toISOString().slice(0, 10);
 
   const stats = [
     { label: "Leads", valor: String(leadsCount), detalle: "en todos los embudos", icon: Workflow, to: "/crm" as const, adminOnly: false },
@@ -469,6 +491,44 @@ function InicioPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Tareas pendientes</CardTitle>
+          <CardDescription>Seguimientos por hacer. Marcá la casilla cuando los completes.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {pendientes.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No tenés tareas pendientes. 🎉</p>
+          ) : (
+            <ul className="divide-y">
+              {pendientes.map((t) => {
+                const vencida = t.vence ? t.vence < hoyStr : false;
+                return (
+                  <li key={t.id} className="flex items-center gap-3 py-2">
+                    <button
+                      type="button"
+                      onClick={() => completarTarea(t.id)}
+                      className="h-5 w-5 shrink-0 rounded border border-input hover:bg-muted"
+                      title="Marcar como hecha"
+                    />
+                    <div className="flex-1">
+                      <p className="text-sm">{t.titulo}</p>
+                      <p className="text-xs text-muted-foreground">{t.leads?.nombre || "Sin lead"}</p>
+                    </div>
+                    {t.vence && (
+                      <span className={`text-xs ${vencida ? "text-rose-600" : "text-muted-foreground"}`}>
+                        {vencida ? "vencida · " : ""}
+                        {t.vence}
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
 
       <AsistenteIA />
     </div>
