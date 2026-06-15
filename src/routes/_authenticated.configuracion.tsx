@@ -107,6 +107,7 @@ function ConfiguracionPage() {
         </Select>
       </div>
 
+      {selId && <ModulosCard key={`mod-${selId}`} profesionalId={selId} />}
       {selId && <CanalCard key={`canal-${selId}`} profesionalId={selId} />}
       {selId && <TypebotCard key={`typebot-${selId}`} profesionalId={selId} />}
       {selId && <BotCard key={`bot-${selId}`} profesionalId={selId} />}
@@ -114,6 +115,52 @@ function ConfiguracionPage() {
       {selId && <EtapasCard key={`etapas-${selId}`} profesionalId={selId} />}
       {selId && <ConocimientoCard key={`conoc-${selId}`} profesionalId={selId} />}
     </div>
+  );
+}
+
+const MODULOS_CLIENTE = [
+  { key: "resumen", label: "Resumen del mes" },
+  { key: "crm", label: "CRM (embudo de leads)" },
+  { key: "chats", label: "Chats / Bandeja" },
+  { key: "agenda", label: "Agenda" },
+];
+
+function ModulosCard({ profesionalId }: { profesionalId: string }) {
+  const [modulos, setModulos] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    supabase
+      .from("profesionales")
+      .select("modulos")
+      .eq("id", profesionalId)
+      .maybeSingle()
+      .then(({ data }) => setModulos((data?.modulos as Record<string, boolean>) ?? {}));
+  }, [profesionalId]);
+
+  async function toggle(key: string, val: boolean) {
+    const nuevo = { ...modulos, [key]: val };
+    setModulos(nuevo);
+    await supabase.from("profesionales").update({ modulos: nuevo }).eq("id", profesionalId);
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Módulos del cliente</CardTitle>
+        <CardDescription>
+          Prendé o apagá las secciones que ve este cliente. Lo apagado no le aparece en su menú
+          (el "telón"). Lo sensible (WhatsApp, IA) siempre lo manejás vos.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {MODULOS_CLIENTE.map((m) => (
+          <div key={m.key} className="flex items-center justify-between">
+            <span className="text-sm">{m.label}</span>
+            <Switch checked={modulos[m.key] !== false} onCheckedChange={(v) => toggle(m.key, v)} />
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 }
 
