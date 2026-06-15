@@ -38,7 +38,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Trash2, ArrowUp, ArrowDown, Copy, Check } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/configuracion")({
   component: ConfiguracionPage,
@@ -108,11 +108,137 @@ function ConfiguracionPage() {
       </div>
 
       {selId && <CanalCard key={`canal-${selId}`} profesionalId={selId} />}
+      {selId && <TypebotCard key={`typebot-${selId}`} profesionalId={selId} />}
       {selId && <BotCard key={`bot-${selId}`} profesionalId={selId} />}
       {selId && <CamposCard key={`campos-${selId}`} profesionalId={selId} />}
       {selId && <EtapasCard key={`etapas-${selId}`} profesionalId={selId} />}
       {selId && <ConocimientoCard key={`conoc-${selId}`} profesionalId={selId} />}
     </div>
+  );
+}
+
+const WEBHOOK_URL =
+  "https://goygizqyithyqzctiljk.supabase.co/functions/v1/typebot-lead";
+
+function FilaCopiar({
+  etiqueta,
+  valor,
+  cual,
+  copiado,
+  onCopiar,
+}: {
+  etiqueta: string;
+  valor: string;
+  cual: string;
+  copiado: string | null;
+  onCopiar: (texto: string, cual: string) => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <Label>{etiqueta}</Label>
+      <div className="flex items-center gap-2">
+        <Input readOnly value={valor} className="font-mono text-xs" />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="shrink-0"
+          onClick={() => onCopiar(valor, cual)}
+        >
+          {copiado === cual ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+          {copiado === cual ? "Copiado" : "Copiar"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function TypebotCard({ profesionalId }: { profesionalId: string }) {
+  const [token, setToken] = useState<string | null>(null);
+  const [campos, setCampos] = useState<{ clave: string }[]>([]);
+  const [copiado, setCopiado] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase
+      .from("profesionales")
+      .select("webhook_token")
+      .eq("id", profesionalId)
+      .maybeSingle()
+      .then(({ data }) => setToken((data?.webhook_token as string) ?? null));
+    supabase
+      .from("campos_personalizados")
+      .select("clave")
+      .eq("profesional_id", profesionalId)
+      .order("orden", { ascending: true })
+      .then(({ data }) => setCampos((data ?? []) as { clave: string }[]));
+  }, [profesionalId]);
+
+  function copiar(texto: string, cual: string) {
+    navigator.clipboard?.writeText(texto);
+    setCopiado(cual);
+    setTimeout(() => setCopiado(null), 1500);
+  }
+
+  const cuerpo = JSON.stringify(
+    {
+      profesional_id: profesionalId,
+      nombre: "Juan Pérez",
+      telefono: "+54 9 11 1234 5678",
+      email: "juan@mail.com",
+      fecha_cita: "2026-06-20T15:00:00Z",
+      datos_extra: Object.fromEntries(campos.map((c) => [c.clave, ""])),
+    },
+    null,
+    2,
+  );
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Conexión del Typebot (entrada de leads)</CardTitle>
+        <CardDescription>
+          Pegá estos datos en el Typebot de este cliente (paso "Enviar a un webhook") y sus leads
+          entran solos a su CRM. Cada cliente tiene su propio token.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <FilaCopiar
+          etiqueta="URL del webhook (método POST)"
+          valor={WEBHOOK_URL}
+          cual="url"
+          copiado={copiado}
+          onCopiar={copiar}
+        />
+        <FilaCopiar
+          etiqueta="Header → x-webhook-token"
+          valor={token ?? "…"}
+          cual="token"
+          copiado={copiado}
+          onCopiar={copiar}
+        />
+        <FilaCopiar
+          etiqueta="profesional_id (de este cliente)"
+          valor={profesionalId}
+          cual="pid"
+          copiado={copiado}
+          onCopiar={copiar}
+        />
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <Label>Cuerpo (JSON) de ejemplo</Label>
+            <Button type="button" variant="outline" size="sm" onClick={() => copiar(cuerpo, "body")}>
+              {copiado === "body" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              {copiado === "body" ? "Copiado" : "Copiar"}
+            </Button>
+          </div>
+          <Textarea readOnly value={cuerpo} rows={10} className="font-mono text-xs" />
+          <p className="text-xs text-muted-foreground">
+            Reemplazá los valores de ejemplo por los del lead en el Typebot. Lo de{" "}
+            <strong>datos_extra</strong> son los campos personalizados de este cliente.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
