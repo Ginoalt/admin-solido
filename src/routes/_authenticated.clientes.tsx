@@ -37,7 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Sparkles, Pencil, Trash2, KeyRound } from "lucide-react";
+import { Plus, Sparkles, Pencil, Trash2, KeyRound, Search } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/clientes")({
   component: ClientesPage,
@@ -60,6 +60,7 @@ function ClientesPage() {
   const [deleting, setDeleting] = useState<Profesional | null>(null);
   const [delErr, setDelErr] = useState<string | null>(null);
   const [inviting, setInviting] = useState<Profesional | null>(null);
+  const [q, setQ] = useState("");
 
   async function load() {
     setLoading(true);
@@ -87,6 +88,14 @@ function ClientesPage() {
     setDeleting(null);
     load();
   }
+
+  const filtradas = rows.filter((r) => {
+    const t = q.trim().toLowerCase();
+    if (!t) return true;
+    return [r.nombre, r.email_contacto, r.rubro].some((v) =>
+      (v ?? "").toLowerCase().includes(t),
+    );
+  });
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
@@ -125,6 +134,16 @@ function ClientesPage() {
         </div>
       </div>
 
+      <div className="relative mb-4 max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Buscar por nombre, email o rubro..."
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
       <div className="rounded-lg border bg-card">
         <Table>
           <TableHeader>
@@ -149,14 +168,14 @@ function ClientesPage() {
                   {error}
                 </TableCell>
               </TableRow>
-            ) : rows.length === 0 ? (
+            ) : filtradas.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                  Sin registros
+                  {rows.length === 0 ? "Sin registros" : "Sin resultados para tu búsqueda"}
                 </TableCell>
               </TableRow>
             ) : (
-              rows.map((r) => (
+              filtradas.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell className="font-medium">{r.nombre}</TableCell>
                   <TableCell>{r.rubro}</TableCell>
