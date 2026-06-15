@@ -38,7 +38,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/agenda")({
   component: AgendaPage,
@@ -82,6 +82,129 @@ function formatFecha(iso: string): string {
   } catch {
     return iso;
   }
+}
+
+const MESES_LARGOS = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
+const DIAS_CORTOS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+
+function horaCorta(iso: string): string {
+  try {
+    return new Date(iso).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return "";
+  }
+}
+
+// Calendario mensual con las citas en cada día
+function CalendarioMes({
+  citas,
+  leadNombre,
+}: {
+  citas: Cita[];
+  leadNombre: (id: string | null) => string;
+}) {
+  const hoy = new Date();
+  const [ym, setYm] = useState({ y: hoy.getFullYear(), m: hoy.getMonth() });
+
+  const primerDiaSemana = new Date(ym.y, ym.m, 1).getDay();
+  const diasEnMes = new Date(ym.y, ym.m + 1, 0).getDate();
+
+  const porDia: Record<number, Cita[]> = {};
+  for (const c of citas) {
+    const d = new Date(c.fecha_hora);
+    if (d.getFullYear() === ym.y && d.getMonth() === ym.m) {
+      (porDia[d.getDate()] ??= []).push(c);
+    }
+  }
+  for (const k in porDia) porDia[k].sort((a, b) => a.fecha_hora.localeCompare(b.fecha_hora));
+
+  const celdas: (number | null)[] = [];
+  for (let i = 0; i < primerDiaSemana; i++) celdas.push(null);
+  for (let d = 1; d <= diasEnMes; d++) celdas.push(d);
+  while (celdas.length % 7 !== 0) celdas.push(null);
+
+  function mover(delta: number) {
+    setYm((p) => {
+      const nm = p.m + delta;
+      return { y: p.y + Math.floor(nm / 12), m: ((nm % 12) + 12) % 12 };
+    });
+  }
+
+  const esHoy = (d: number) =>
+    hoy.getFullYear() === ym.y && hoy.getMonth() === ym.m && hoy.getDate() === d;
+
+  return (
+    <div className="mb-4 rounded-lg border bg-card p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-sm font-semibold capitalize">
+          {MESES_LARGOS[ym.m]} {ym.y}
+        </h2>
+        <div className="flex items-center gap-1">
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => mover(-1)}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setYm({ y: hoy.getFullYear(), m: hoy.getMonth() })}
+          >
+            Hoy
+          </Button>
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => mover(1)}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+      <div className="grid grid-cols-7 gap-1">
+        {DIAS_CORTOS.map((d) => (
+          <div key={d} className="py-1 text-center text-xs font-medium text-muted-foreground">
+            {d}
+          </div>
+        ))}
+        {celdas.map((d, i) => (
+          <div
+            key={i}
+            className={`min-h-[5rem] rounded-md border p-1 ${d == null ? "bg-muted/20" : ""}`}
+          >
+            {d != null && (
+              <>
+                <div
+                  className={`text-xs ${
+                    esHoy(d)
+                      ? "inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {d}
+                </div>
+                <div className="mt-1 space-y-1">
+                  {(porDia[d] ?? []).map((c) => (
+                    <div
+                      key={c.id}
+                      className="flex items-center gap-1 rounded bg-muted/60 px-1 py-0.5 text-[10px] leading-tight"
+                      title={`${horaCorta(c.fecha_hora)} · ${leadNombre(c.lead_id)}`}
+                    >
+                      <span
+                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                          COLOR_ESTADO[c.estado ?? "agendada"] ?? "bg-muted-foreground"
+                        }`}
+                      />
+                      <span className="truncate">
+                        {horaCorta(c.fecha_hora)} {leadNombre(c.lead_id)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function AgendaPage() {
@@ -223,6 +346,8 @@ function AgendaPage() {
       </div>
 
       {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
+
+      <CalendarioMes citas={citas} leadNombre={leadNombre} />
 
       <div className="rounded-lg border bg-card">
         <Table>
