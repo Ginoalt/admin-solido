@@ -25,7 +25,8 @@ function AuthLayout() {
   const navigate = useNavigate();
   const [checking, setChecking] = useState(true);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { loading: perfilLoading, esAdmin } = useMiPerfil();
+  const { perfil, loading: perfilLoading, esAdmin } = useMiPerfil();
+  const pausado = !esAdmin && perfil?.estado === "pausado";
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -59,6 +60,23 @@ function AuthLayout() {
     return (
       <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">
         Cargando...
+      </div>
+    );
+
+  // Cuenta en pausa: el cliente no entra hasta que el admin la reactive.
+  if (pausado)
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
+        <div className="w-full max-w-sm rounded-lg border bg-card p-8 text-center shadow-sm">
+          <h1 className="text-xl font-semibold tracking-tight">Cuenta en pausa</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Tu cuenta está pausada temporalmente. Contactá a soporte para reactivarla.
+          </p>
+          <Button variant="outline" className="mt-6" onClick={handleLogout}>
+            <LogOut className="h-4 w-4" />
+            Cerrar sesión
+          </Button>
+        </div>
       </div>
     );
 
