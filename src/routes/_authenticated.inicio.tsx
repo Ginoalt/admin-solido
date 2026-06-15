@@ -9,7 +9,15 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
-import { Users, Workflow, CalendarDays, Trophy } from "lucide-react";
+import {
+  Users,
+  Workflow,
+  CalendarDays,
+  CalendarCheck,
+  UserX,
+  Target,
+  ArrowRight,
+} from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/inicio")({
   component: InicioPage,
@@ -39,6 +47,15 @@ const COLOR_ESTADO: Record<string, string> = {
   cancelada: "bg-rose-500",
 };
 
+const COLOR_TIPO: Record<string, string> = {
+  ganado: "bg-emerald-500",
+  perdido: "bg-rose-500",
+  normal: "bg-blue-500",
+};
+
+const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+const DIAS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+
 function formatFecha(iso: string): string {
   try {
     return new Date(iso).toLocaleString("es-AR", {
@@ -52,24 +69,49 @@ function formatFecha(iso: string): string {
   }
 }
 
-// Una fila de barra horizontal simple
+// Medidor de media luna (gauge)
+function Gauge({ value }: { value: number }) {
+  const v = Math.max(0, Math.min(100, value));
+  const cx = 100, cy = 100, r = 80;
+  const theta = ((180 - (v / 100) * 180) * Math.PI) / 180;
+  const ex = cx + r * Math.cos(theta);
+  const ey = cy - r * Math.sin(theta);
+  const bg = `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`;
+  const fg = `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${ex.toFixed(2)} ${ey.toFixed(2)}`;
+  const color = v >= 70 ? "#10b981" : v >= 40 ? "#f59e0b" : "#f43f5e";
+  return (
+    <svg viewBox="0 0 200 120" className="w-full max-w-[240px]">
+      <path d={bg} fill="none" stroke="hsl(var(--muted))" strokeWidth="16" strokeLinecap="round" />
+      <path d={fg} fill="none" stroke={color} strokeWidth="16" strokeLinecap="round" />
+      <text x="100" y="92" textAnchor="middle" className="fill-foreground" fontSize="30" fontWeight="700">
+        {Math.round(v)}%
+      </text>
+    </svg>
+  );
+}
+
+// Barra horizontal simple
 function BarRow({
   label,
   value,
   max,
   color,
+  monto,
 }: {
   label: string;
   value: number;
   max: number;
   color: string;
+  monto?: string;
 }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0;
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between text-sm">
         <span>{label}</span>
-        <span className="text-muted-foreground tabular-nums">{value}</span>
+        <span className="text-muted-foreground tabular-nums">
+          {monto ? `${value} · ${monto}` : value}
+        </span>
       </div>
       <div className="h-2 rounded-full bg-muted overflow-hidden">
         <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
@@ -78,29 +120,25 @@ function BarRow({
   );
 }
 
-type Embudo = {
-  enProceso: number;
-  ganados: number;
-  perdidos: number;
-  sinEtapa: number;
-};
+type EtapaAgg = { nombre: string; orden: number; tipo: string; count: number };
 
 function InicioPage() {
-  const [clientes, setClientes] = useState(0);
-  const [clientesActivos, setClientesActivos] = useState(0);
-  const [leadsCount, setLeadsCount] = useState(0);
-  const [proximasCount, setProximasCount] = useState(0);
-  const [citasSemana, setCitasSemana] = useState(0);
-  const [proximas, setProximas] = useState<CitaProxima[]>([]);
-  const [embudo, setEmbudo] = useState<Embudo>({
-    enProceso: 0,
-    ganados: 0,
-    perdidos: 0,
-    sinEtapa: 0,
-  });
-  const [citasPorEstado, setCitasPorEstado] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState(true);
   const { esAdmin } = useMiPerfil();
+  const [loading, setLoading] = useState(true);
+
+  const [clientes, setClientes] = useState(0);
+  const [leadsCount, setLeadsCount] = useState(0);
+  const [citasTotal, setCitasTotal] = useState(0);
+  const [atendidas, setAtendidas] = useState(0);
+  const [noShow, setNoShow] = useState(0);
+  const [proximasCount, setProximasCount] = useState(0);
+
+  const [pipeline, setPipeline] = useState<EtapaAgg[]>([]);
+  const [porEstado, setPorEstado] = useState<Record<string, number>>({});
+  const [porMes, setPorMes] = useState<{ label: string; agendadas: number; atendidas: number }[]>([]);
+  const [porDia, setPorDia] = useState<number[]>([0, 0, 0, 0, 0, 0, 0]);
+  const [proximas, setProximas] = useState<CitaProxima[]>([]);
+  const [sinMarcar, setSinMarcar] = useState<CitaProxima[]>([]);
 
   useEffect(() => {
     const ahora = new Date();
@@ -108,61 +146,93 @@ function InicioPage() {
     const semanaIso = new Date(ahora.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
     async function load() {
-      const [cTot, cAct, leadsRes, citasProx, citasFuturas, citasEstadosRes, citasSemanaRes] =
-        await Promise.all([
-          supabase.from("profesionales").select("*", { count: "exact", head: true }),
-          supabase
-            .from("profesionales")
-            .select("*", { count: "exact", head: true })
-            .eq("estado", "activo"),
-          supabase.from("leads").select("id, etapas_pipeline(tipo)"),
-          supabase
-            .from("citas")
-            .select("id, fecha_hora, estado, profesionales(nombre), leads(nombre)")
-            .gte("fecha_hora", ahoraIso)
-            .order("fecha_hora", { ascending: true })
-            .limit(6),
-          supabase
-            .from("citas")
-            .select("*", { count: "exact", head: true })
-            .gte("fecha_hora", ahoraIso),
-          supabase.from("citas").select("estado"),
-          supabase
-            .from("citas")
-            .select("*", { count: "exact", head: true })
-            .gte("fecha_hora", ahoraIso)
-            .lte("fecha_hora", semanaIso),
-        ]);
+      const [cTot, leadsRes, citasRes, proximasRes, sinMarcarRes, proxCount] = await Promise.all([
+        supabase.from("profesionales").select("*", { count: "exact", head: true }),
+        supabase.from("leads").select("etapa_id, etapas_pipeline(nombre, orden, tipo)"),
+        supabase.from("citas").select("fecha_hora, estado"),
+        supabase
+          .from("citas")
+          .select("id, fecha_hora, estado, profesionales(nombre), leads(nombre)")
+          .gte("fecha_hora", ahoraIso)
+          .order("fecha_hora", { ascending: true })
+          .limit(6),
+        supabase
+          .from("citas")
+          .select("id, fecha_hora, estado, profesionales(nombre), leads(nombre)")
+          .lt("fecha_hora", ahoraIso)
+          .in("estado", ["agendada", "confirmada"])
+          .order("fecha_hora", { ascending: false })
+          .limit(6),
+        supabase
+          .from("citas")
+          .select("*", { count: "exact", head: true })
+          .gte("fecha_hora", ahoraIso)
+          .lte("fecha_hora", semanaIso),
+      ]);
 
       setClientes(cTot.count ?? 0);
-      setClientesActivos(cAct.count ?? 0);
-      setProximas((citasProx.data ?? []) as CitaProxima[]);
-      setProximasCount(citasFuturas.count ?? 0);
-      setCitasSemana(citasSemanaRes.count ?? 0);
+      setProximas((proximasRes.data ?? []) as CitaProxima[]);
+      setSinMarcar((sinMarcarRes.data ?? []) as CitaProxima[]);
+      setProximasCount(proxCount.count ?? 0);
 
-      // Embudo: agrupar leads por el tipo de su etapa
+      // Pipeline por etapa (agrupado por nombre, conservando orden y tipo)
       const leadsArr = (leadsRes.data ?? []) as {
-        etapas_pipeline: { tipo: string | null } | null;
+        etapa_id: string | null;
+        etapas_pipeline: { nombre: string | null; orden: number | null; tipo: string | null } | null;
       }[];
-      const emb: Embudo = { enProceso: 0, ganados: 0, perdidos: 0, sinEtapa: 0 };
-      for (const l of leadsArr) {
-        const tipo = l.etapas_pipeline?.tipo;
-        if (!l.etapas_pipeline) emb.sinEtapa++;
-        else if (tipo === "ganado") emb.ganados++;
-        else if (tipo === "perdido") emb.perdidos++;
-        else emb.enProceso++;
-      }
-      setEmbudo(emb);
       setLeadsCount(leadsArr.length);
-
-      // Citas por estado
-      const citasEst = (citasEstadosRes.data ?? []) as { estado: string | null }[];
-      const porEstado: Record<string, number> = {};
-      for (const c of citasEst) {
-        const k = c.estado ?? "agendada";
-        porEstado[k] = (porEstado[k] ?? 0) + 1;
+      const mapaEtapas = new Map<string, EtapaAgg>();
+      for (const l of leadsArr) {
+        const e = l.etapas_pipeline;
+        if (!e || !e.nombre) continue;
+        const prev = mapaEtapas.get(e.nombre);
+        if (prev) prev.count++;
+        else
+          mapaEtapas.set(e.nombre, {
+            nombre: e.nombre,
+            orden: e.orden ?? 99,
+            tipo: e.tipo ?? "normal",
+            count: 1,
+          });
       }
-      setCitasPorEstado(porEstado);
+      setPipeline([...mapaEtapas.values()].sort((a, b) => a.orden - b.orden));
+
+      // Citas: estados, por mes, por día
+      const citasArr = (citasRes.data ?? []) as { fecha_hora: string; estado: string | null }[];
+      setCitasTotal(citasArr.length);
+
+      const estados: Record<string, number> = {};
+      const dias = [0, 0, 0, 0, 0, 0, 0];
+      let at = 0;
+      let ns = 0;
+
+      const meses: { key: string; label: string; agendadas: number; atendidas: number }[] = [];
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
+        meses.push({ key: `${d.getFullYear()}-${d.getMonth()}`, label: MESES[d.getMonth()], agendadas: 0, atendidas: 0 });
+      }
+      const idxMes = new Map(meses.map((m, i) => [m.key, i]));
+
+      for (const c of citasArr) {
+        const est = c.estado ?? "agendada";
+        estados[est] = (estados[est] ?? 0) + 1;
+        if (est === "atendida") at++;
+        if (est === "no_show") ns++;
+        const d = new Date(c.fecha_hora);
+        dias[d.getDay()]++;
+        const k = `${d.getFullYear()}-${d.getMonth()}`;
+        const mi = idxMes.get(k);
+        if (mi != null) {
+          meses[mi].agendadas++;
+          if (est === "atendida") meses[mi].atendidas++;
+        }
+      }
+
+      setPorEstado(estados);
+      setAtendidas(at);
+      setNoShow(ns);
+      setPorDia(dias);
+      setPorMes(meses.map((m) => ({ label: m.label, agendadas: m.agendadas, atendidas: m.atendidas })));
 
       setLoading(false);
     }
@@ -177,74 +247,44 @@ function InicioPage() {
     );
   }
 
-  const cerrados = embudo.ganados + embudo.perdidos;
-  const tasaGanados = cerrados > 0 ? Math.round((embudo.ganados / cerrados) * 100) : null;
+  const conResultado = atendidas + noShow;
+  const tasaAsistencia = conResultado > 0 ? Math.round((atendidas / conResultado) * 100) : 0;
 
   const stats = [
-    {
-      label: "Clientes",
-      valor: String(clientes),
-      detalle: `${clientesActivos} activos`,
-      icon: Users,
-      to: "/clientes" as const,
-    },
-    {
-      label: "Leads",
-      valor: String(leadsCount),
-      detalle: "en todos los embudos",
-      icon: Workflow,
-      to: "/crm" as const,
-    },
-    {
-      label: "Citas próximas",
-      valor: String(proximasCount),
-      detalle: `${citasSemana} en los próximos 7 días`,
-      icon: CalendarDays,
-      to: "/agenda" as const,
-    },
-    {
-      label: "Tasa de ganados",
-      valor: tasaGanados != null ? `${tasaGanados}%` : "—",
-      detalle:
-        cerrados > 0
-          ? `${embudo.ganados} ganados / ${embudo.perdidos} perdidos`
-          : "sin casos cerrados aún",
-      icon: Trophy,
-      to: "/crm" as const,
-    },
-  ];
+    { label: "Leads", valor: String(leadsCount), detalle: "en todos los embudos", icon: Workflow, to: "/crm" as const, adminOnly: false },
+    { label: "Citas agendadas", valor: String(citasTotal), detalle: "en total", icon: CalendarDays, to: "/agenda" as const, adminOnly: false },
+    { label: "Atendidas", valor: String(atendidas), detalle: "citas concretadas", icon: CalendarCheck, to: "/agenda" as const, adminOnly: false },
+    { label: "No-show", valor: String(noShow), detalle: "no se presentaron", icon: UserX, to: "/agenda" as const, adminOnly: false },
+    { label: "Tasa de asistencia", valor: `${tasaAsistencia}%`, detalle: `${conResultado} con resultado`, icon: Target, to: "/agenda" as const, adminOnly: false },
+    { label: "Clientes", valor: String(clientes), detalle: "activos en la plataforma", icon: Users, to: "/clientes" as const, adminOnly: true },
+  ].filter((s) => esAdmin || !s.adminOnly);
 
-  const maxEmbudo = Math.max(
-    embudo.enProceso,
-    embudo.ganados,
-    embudo.perdidos,
-    embudo.sinEtapa,
-    1,
-  );
-  const maxCitas = Math.max(1, ...Object.values(citasPorEstado));
+  const maxMes = Math.max(1, ...porMes.map((m) => Math.max(m.agendadas, m.atendidas)));
+  const maxPipeline = Math.max(1, ...pipeline.map((p) => p.count));
+  const maxEstado = Math.max(1, ...Object.values(porEstado));
+  const maxDia = Math.max(1, ...porDia);
 
   return (
-    <div className="p-8 max-w-5xl mx-auto space-y-6">
+    <div className="p-8 max-w-6xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Inicio</h1>
-        <p className="text-sm text-muted-foreground">Resumen de tu operación</p>
+        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+        <p className="text-sm text-muted-foreground">Resumen en vivo de tu operación</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.filter((s) => esAdmin || s.label !== "Clientes").map((s) => {
+      {/* Tarjetas de métricas */}
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+        {stats.map((s) => {
           const Icon = s.icon;
           return (
             <Link key={s.label} to={s.to}>
-              <Card className="transition-colors hover:bg-muted/40">
+              <Card className="transition-colors hover:bg-muted/40 h-full">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    {s.label}
-                  </CardTitle>
+                  <CardTitle className="text-xs font-medium text-muted-foreground">{s.label}</CardTitle>
                   <Icon className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-semibold">{s.valor}</div>
-                  <p className="text-xs text-muted-foreground mt-1">{s.detalle}</p>
+                  <div className="text-2xl font-semibold">{s.valor}</div>
+                  <p className="text-[11px] text-muted-foreground mt-1">{s.detalle}</p>
                 </CardContent>
               </Card>
             </Link>
@@ -252,27 +292,78 @@ function InicioPage() {
         })}
       </div>
 
+      {/* Citas por mes + gauge */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Citas por mes</CardTitle>
+            <CardDescription>Últimos 12 meses — agendadas vs. atendidas.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-end gap-2 h-44">
+              {porMes.map((m, i) => (
+                <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full">
+                  <div className="flex items-end justify-center gap-0.5 w-full h-full">
+                    <div
+                      className="w-2.5 rounded-t bg-blue-500"
+                      style={{ height: `${(m.agendadas / maxMes) * 100}%` }}
+                      title={`${m.agendadas} agendadas`}
+                    />
+                    <div
+                      className="w-2.5 rounded-t bg-emerald-500"
+                      style={{ height: `${(m.atendidas / maxMes) * 100}%` }}
+                      title={`${m.atendidas} atendidas`}
+                    />
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">{m.label}</span>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-blue-500" /> Agendadas
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" /> Atendidas
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Tasa de asistencia</CardTitle>
+            <CardDescription>Atendidas sobre citas con resultado.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center justify-center">
+            <Gauge value={tasaAsistencia} />
+            <p className="text-xs text-muted-foreground mt-2">
+              {atendidas} atendidas / {noShow} no-show
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Pipeline + estados */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
-            <CardTitle>Embudo de leads</CardTitle>
-            <CardDescription>Todos los clientes, por situación.</CardDescription>
+            <CardTitle>Pipeline por etapa</CardTitle>
+            <CardDescription>Leads en cada etapa del embudo.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {leadsCount === 0 ? (
-              <p className="text-sm text-muted-foreground">Todavía no hay leads.</p>
+            {pipeline.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Todavía no hay leads con etapa.</p>
             ) : (
-              <>
-                <BarRow label="En proceso" value={embudo.enProceso} max={maxEmbudo} color="bg-blue-500" />
-                <BarRow label="Ganados" value={embudo.ganados} max={maxEmbudo} color="bg-emerald-500" />
-                <BarRow label="Perdidos" value={embudo.perdidos} max={maxEmbudo} color="bg-rose-500" />
+              pipeline.map((p) => (
                 <BarRow
-                  label="Sin etapa"
-                  value={embudo.sinEtapa}
-                  max={maxEmbudo}
-                  color="bg-muted-foreground/40"
+                  key={p.nombre}
+                  label={p.nombre}
+                  value={p.count}
+                  max={maxPipeline}
+                  color={COLOR_TIPO[p.tipo] ?? "bg-blue-500"}
                 />
-              </>
+              ))
             )}
           </CardContent>
         </Card>
@@ -283,15 +374,15 @@ function InicioPage() {
             <CardDescription>Cómo vienen tus consultas.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {Object.keys(citasPorEstado).length === 0 ? (
+            {Object.keys(porEstado).length === 0 ? (
               <p className="text-sm text-muted-foreground">Todavía no hay citas.</p>
             ) : (
               Object.keys(ESTADOS).map((k) => (
                 <BarRow
                   key={k}
                   label={ESTADOS[k]}
-                  value={citasPorEstado[k] ?? 0}
-                  max={maxCitas}
+                  value={porEstado[k] ?? 0}
+                  max={maxEstado}
                   color={COLOR_ESTADO[k] ?? "bg-primary"}
                 />
               ))
@@ -300,38 +391,83 @@ function InicioPage() {
         </Card>
       </div>
 
+      {/* Citas por día de la semana */}
       <Card>
         <CardHeader>
-          <CardTitle>Próximas citas</CardTitle>
-          <CardDescription>Las que vienen, ordenadas por fecha.</CardDescription>
+          <CardTitle>Citas por día de la semana</CardTitle>
+          <CardDescription>En qué días se concentran tus citas.</CardDescription>
         </CardHeader>
         <CardContent>
-          {proximas.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No hay citas próximas.</p>
-          ) : (
-            <ul className="divide-y">
-              {proximas.map((c) => (
-                <li key={c.id} className="flex items-center justify-between py-3">
-                  <div>
-                    <p className="text-sm font-medium">
-                      {c.leads?.nombre || "Sin lead"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {c.profesionales?.nombre || "—"}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm">{formatFecha(c.fecha_hora)}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {ESTADOS[c.estado ?? "agendada"] ?? c.estado}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+          <div className="flex items-end gap-3 h-36">
+            {porDia.map((n, i) => (
+              <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full">
+                <div className="flex items-end w-full h-full justify-center">
+                  <div
+                    className="w-8 rounded-t bg-primary"
+                    style={{ height: `${(n / maxDia) * 100}%` }}
+                    title={`${n} citas`}
+                  />
+                </div>
+                <span className="text-[11px] text-muted-foreground">{DIAS[i]}</span>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
+
+      {/* Próximas citas + sin marcar */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Próximas citas · 7 días ({proximasCount})</CardTitle>
+            <CardDescription>Las que vienen, ordenadas por fecha.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {proximas.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No hay citas próximas.</p>
+            ) : (
+              <ul className="divide-y">
+                {proximas.map((c) => (
+                  <li key={c.id} className="flex items-center justify-between py-3">
+                    <div>
+                      <p className="text-sm font-medium">{c.leads?.nombre || "Sin lead"}</p>
+                      <p className="text-xs text-muted-foreground">{c.profesionales?.nombre || "—"}</p>
+                    </div>
+                    <p className="text-sm">{formatFecha(c.fecha_hora)}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              Citas sin marcar
+              <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            </CardTitle>
+            <CardDescription>Pasaron y no cargaste el resultado.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {sinMarcar.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Todo al día. 🎉</p>
+            ) : (
+              <ul className="divide-y">
+                {sinMarcar.map((c) => (
+                  <li key={c.id} className="flex items-center justify-between py-3">
+                    <div>
+                      <p className="text-sm font-medium">{c.leads?.nombre || "Sin lead"}</p>
+                      <p className="text-xs text-muted-foreground">{c.profesionales?.nombre || "—"}</p>
+                    </div>
+                    <span className="text-xs text-amber-600">sin marcar</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
