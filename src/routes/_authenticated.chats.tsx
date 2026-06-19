@@ -58,6 +58,7 @@ function ChatsPage() {
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
   const [texto, setTexto] = useState("");
   const [loading, setLoading] = useState(true);
+  const [errEnvio, setErrEnvio] = useState<string | null>(null);
 
   useEffect(() => {
     supabase
@@ -90,6 +91,7 @@ function ChatsPage() {
 
   async function abrir(c: Conversacion) {
     setActiva(c);
+    setErrEnvio(null);
     const { data } = await supabase
       .from("mensajes")
       .select("id, direccion, autor, contenido, created_at")
@@ -109,20 +111,14 @@ function ChatsPage() {
     if (!texto.trim() || !activa || !selId) return;
     const contenido = texto.trim();
     setTexto("");
-    await supabase.from("mensajes").insert({
-      profesional_id: selId,
-      conversacion_id: activa.id,
-      lead_id: activa.lead_id,
-      direccion: "saliente",
-      autor: "humano",
-      tipo: "texto",
-      contenido,
-      estado: "pendiente",
+    setErrEnvio(null);
+    // La función manda el mensaje por WhatsApp y lo guarda con el estado real.
+    const { error } = await supabase.functions.invoke("whatsapp-send", {
+      body: { conversacion_id: activa.id, texto: contenido },
     });
-    await supabase
-      .from("conversaciones")
-      .update({ ultimo_mensaje_at: new Date().toISOString() })
-      .eq("id", activa.id);
+    if (error) {
+      setErrEnvio("No se pudo entregar por WhatsApp (quedó guardado igual). Revisá la conexión o si pasaron 24 hs.");
+    }
     abrir(activa);
     cargarConvs(selId);
   }
@@ -248,6 +244,9 @@ function ChatsPage() {
                 )}
               </div>
 
+              {errEnvio && (
+                <p className="px-3 pt-2 text-xs text-destructive">{errEnvio}</p>
+              )}
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
