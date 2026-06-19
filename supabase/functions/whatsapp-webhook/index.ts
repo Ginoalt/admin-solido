@@ -305,19 +305,20 @@ async function enviarTexto(
   to: string,
   texto: string,
 ): Promise<boolean> {
+  const destino = normalizarDestino(to);
   try {
     const resp = await fetch(`${GRAPH}/${phoneNumberId}/messages`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "content-type": "application/json" },
       body: JSON.stringify({
         messaging_product: "whatsapp",
-        to,
+        to: destino,
         type: "text",
         text: { body: texto },
       }),
     });
     if (!resp.ok) {
-      console.error("WhatsApp send:", await resp.text());
+      console.error(`WhatsApp send (destino ${destino}, original ${to}):`, await resp.text());
       return false;
     }
     return true;
@@ -325,6 +326,17 @@ async function enviarTexto(
     console.error("WhatsApp send exception:", e);
     return false;
   }
+}
+
+// Argentina: WhatsApp ENTREGA el numero como 549XXXXXXXXXX, pero para ENVIARLE hay que
+// usar 54XXXXXXXXXX (sin el 9). Sin esto el mensaje rebota (error 131030 en el numero de
+// prueba; o directamente no se entrega en produccion). Otros paises quedan igual.
+function normalizarDestino(to: string): string {
+  const limpio = String(to).replace(/\D/g, "");
+  if (limpio.startsWith("549") && limpio.length === 13) {
+    return "54" + limpio.slice(3);
+  }
+  return limpio;
 }
 
 function asArray(x: unknown): any[] {
