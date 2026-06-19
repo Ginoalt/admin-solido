@@ -12,14 +12,14 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedClientesRouteImport } from './routes/_authenticated.clientes'
-import { Route as AuthenticatedCrmRouteImport } from './routes/_authenticated.crm'
-import { Route as AuthenticatedConfiguracionRouteImport } from './routes/_authenticated.configuracion'
-import { Route as AuthenticatedAltaClienteRouteImport } from './routes/_authenticated.alta-cliente'
-import { Route as AuthenticatedAgendaRouteImport } from './routes/_authenticated.agenda'
-import { Route as AuthenticatedChatsRouteImport } from './routes/_authenticated.chats'
 import { Route as AuthenticatedResumenRouteImport } from './routes/_authenticated.resumen'
 import { Route as AuthenticatedInicioRouteImport } from './routes/_authenticated.inicio'
+import { Route as AuthenticatedCrmRouteImport } from './routes/_authenticated.crm'
+import { Route as AuthenticatedConfiguracionRouteImport } from './routes/_authenticated.configuracion'
+import { Route as AuthenticatedClientesRouteImport } from './routes/_authenticated.clientes'
+import { Route as AuthenticatedChatsRouteImport } from './routes/_authenticated.chats'
+import { Route as AuthenticatedAltaClienteRouteImport } from './routes/_authenticated.alta-cliente'
+import { Route as AuthenticatedAgendaRouteImport } from './routes/_authenticated.agenda'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -35,36 +35,6 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedClientesRoute = AuthenticatedClientesRouteImport.update({
-  id: '/clientes',
-  path: '/clientes',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedCrmRoute = AuthenticatedCrmRouteImport.update({
-  id: '/crm',
-  path: '/crm',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedConfiguracionRoute = AuthenticatedConfiguracionRouteImport.update({
-  id: '/configuracion',
-  path: '/configuracion',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedAltaClienteRoute = AuthenticatedAltaClienteRouteImport.update({
-  id: '/alta-cliente',
-  path: '/alta-cliente',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedAgendaRoute = AuthenticatedAgendaRouteImport.update({
-  id: '/agenda',
-  path: '/agenda',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedChatsRoute = AuthenticatedChatsRouteImport.update({
-  id: '/chats',
-  path: '/chats',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
 const AuthenticatedResumenRoute = AuthenticatedResumenRouteImport.update({
   id: '/resumen',
   path: '/resumen',
@@ -75,28 +45,61 @@ const AuthenticatedInicioRoute = AuthenticatedInicioRouteImport.update({
   path: '/inicio',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedCrmRoute = AuthenticatedCrmRouteImport.update({
+  id: '/crm',
+  path: '/crm',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedConfiguracionRoute =
+  AuthenticatedConfiguracionRouteImport.update({
+    id: '/configuracion',
+    path: '/configuracion',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedClientesRoute = AuthenticatedClientesRouteImport.update({
+  id: '/clientes',
+  path: '/clientes',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedChatsRoute = AuthenticatedChatsRouteImport.update({
+  id: '/chats',
+  path: '/chats',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAltaClienteRoute =
+  AuthenticatedAltaClienteRouteImport.update({
+    id: '/alta-cliente',
+    path: '/alta-cliente',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedAgendaRoute = AuthenticatedAgendaRouteImport.update({
+  id: '/agenda',
+  path: '/agenda',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/clientes': typeof AuthenticatedClientesRoute
-  '/crm': typeof AuthenticatedCrmRoute
-  '/configuracion': typeof AuthenticatedConfiguracionRoute
-  '/alta-cliente': typeof AuthenticatedAltaClienteRoute
   '/agenda': typeof AuthenticatedAgendaRoute
+  '/alta-cliente': typeof AuthenticatedAltaClienteRoute
   '/chats': typeof AuthenticatedChatsRoute
-  '/resumen': typeof AuthenticatedResumenRoute
+  '/clientes': typeof AuthenticatedClientesRoute
+  '/configuracion': typeof AuthenticatedConfiguracionRoute
+  '/crm': typeof AuthenticatedCrmRoute
   '/inicio': typeof AuthenticatedInicioRoute
+  '/resumen': typeof AuthenticatedResumenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/clientes': typeof AuthenticatedClientesRoute
-  '/crm': typeof AuthenticatedCrmRoute
-  '/configuracion': typeof AuthenticatedConfiguracionRoute
-  '/alta-cliente': typeof AuthenticatedAltaClienteRoute
   '/agenda': typeof AuthenticatedAgendaRoute
+  '/alta-cliente': typeof AuthenticatedAltaClienteRoute
   '/chats': typeof AuthenticatedChatsRoute
+  '/clientes': typeof AuthenticatedClientesRoute
+  '/configuracion': typeof AuthenticatedConfiguracionRoute
+  '/crm': typeof AuthenticatedCrmRoute
+  '/inicio': typeof AuthenticatedInicioRoute
   '/resumen': typeof AuthenticatedResumenRoute
 }
 export interface FileRoutesById {
@@ -104,53 +107,53 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
-  '/_authenticated/clientes': typeof AuthenticatedClientesRoute
-  '/_authenticated/crm': typeof AuthenticatedCrmRoute
-  '/_authenticated/configuracion': typeof AuthenticatedConfiguracionRoute
-  '/_authenticated/alta-cliente': typeof AuthenticatedAltaClienteRoute
   '/_authenticated/agenda': typeof AuthenticatedAgendaRoute
+  '/_authenticated/alta-cliente': typeof AuthenticatedAltaClienteRoute
   '/_authenticated/chats': typeof AuthenticatedChatsRoute
-  '/_authenticated/resumen': typeof AuthenticatedResumenRoute
+  '/_authenticated/clientes': typeof AuthenticatedClientesRoute
+  '/_authenticated/configuracion': typeof AuthenticatedConfiguracionRoute
+  '/_authenticated/crm': typeof AuthenticatedCrmRoute
   '/_authenticated/inicio': typeof AuthenticatedInicioRoute
+  '/_authenticated/resumen': typeof AuthenticatedResumenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/login'
-    | '/clientes'
-    | '/crm'
-    | '/configuracion'
-    | '/alta-cliente'
     | '/agenda'
+    | '/alta-cliente'
     | '/chats'
-    | '/resumen'
+    | '/clientes'
+    | '/configuracion'
+    | '/crm'
     | '/inicio'
+    | '/resumen'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
-    | '/clientes'
-    | '/crm'
-    | '/configuracion'
-    | '/alta-cliente'
     | '/agenda'
+    | '/alta-cliente'
     | '/chats'
-    | '/resumen'
+    | '/clientes'
+    | '/configuracion'
+    | '/crm'
     | '/inicio'
+    | '/resumen'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/login'
-    | '/_authenticated/clientes'
-    | '/_authenticated/crm'
-    | '/_authenticated/configuracion'
-    | '/_authenticated/alta-cliente'
     | '/_authenticated/agenda'
+    | '/_authenticated/alta-cliente'
     | '/_authenticated/chats'
-    | '/_authenticated/resumen'
+    | '/_authenticated/clientes'
+    | '/_authenticated/configuracion'
+    | '/_authenticated/crm'
     | '/_authenticated/inicio'
+    | '/_authenticated/resumen'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -182,11 +185,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/clientes': {
-      id: '/_authenticated/clientes'
-      path: '/clientes'
-      fullPath: '/clientes'
-      preLoaderRoute: typeof AuthenticatedClientesRouteImport
+    '/_authenticated/resumen': {
+      id: '/_authenticated/resumen'
+      path: '/resumen'
+      fullPath: '/resumen'
+      preLoaderRoute: typeof AuthenticatedResumenRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/inicio': {
+      id: '/_authenticated/inicio'
+      path: '/inicio'
+      fullPath: '/inicio'
+      preLoaderRoute: typeof AuthenticatedInicioRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/crm': {
@@ -203,6 +213,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedConfiguracionRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/clientes': {
+      id: '/_authenticated/clientes'
+      path: '/clientes'
+      fullPath: '/clientes'
+      preLoaderRoute: typeof AuthenticatedClientesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/chats': {
+      id: '/_authenticated/chats'
+      path: '/chats'
+      fullPath: '/chats'
+      preLoaderRoute: typeof AuthenticatedChatsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/alta-cliente': {
       id: '/_authenticated/alta-cliente'
       path: '/alta-cliente'
@@ -217,50 +241,29 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAgendaRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/chats': {
-      id: '/_authenticated/chats'
-      path: '/chats'
-      fullPath: '/chats'
-      preLoaderRoute: typeof AuthenticatedChatsRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/resumen': {
-      id: '/_authenticated/resumen'
-      path: '/resumen'
-      fullPath: '/resumen'
-      preLoaderRoute: typeof AuthenticatedResumenRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/inicio': {
-      id: '/_authenticated/inicio'
-      path: '/inicio'
-      fullPath: '/inicio'
-      preLoaderRoute: typeof AuthenticatedInicioRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
   }
 }
 
 interface AuthenticatedRouteChildren {
-  AuthenticatedClientesRoute: typeof AuthenticatedClientesRoute
-  AuthenticatedCrmRoute: typeof AuthenticatedCrmRoute
-  AuthenticatedConfiguracionRoute: typeof AuthenticatedConfiguracionRoute
-  AuthenticatedAltaClienteRoute: typeof AuthenticatedAltaClienteRoute
   AuthenticatedAgendaRoute: typeof AuthenticatedAgendaRoute
+  AuthenticatedAltaClienteRoute: typeof AuthenticatedAltaClienteRoute
   AuthenticatedChatsRoute: typeof AuthenticatedChatsRoute
-  AuthenticatedResumenRoute: typeof AuthenticatedResumenRoute
+  AuthenticatedClientesRoute: typeof AuthenticatedClientesRoute
+  AuthenticatedConfiguracionRoute: typeof AuthenticatedConfiguracionRoute
+  AuthenticatedCrmRoute: typeof AuthenticatedCrmRoute
   AuthenticatedInicioRoute: typeof AuthenticatedInicioRoute
+  AuthenticatedResumenRoute: typeof AuthenticatedResumenRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
-  AuthenticatedClientesRoute: AuthenticatedClientesRoute,
-  AuthenticatedCrmRoute: AuthenticatedCrmRoute,
-  AuthenticatedConfiguracionRoute: AuthenticatedConfiguracionRoute,
-  AuthenticatedAltaClienteRoute: AuthenticatedAltaClienteRoute,
   AuthenticatedAgendaRoute: AuthenticatedAgendaRoute,
+  AuthenticatedAltaClienteRoute: AuthenticatedAltaClienteRoute,
   AuthenticatedChatsRoute: AuthenticatedChatsRoute,
-  AuthenticatedResumenRoute: AuthenticatedResumenRoute,
+  AuthenticatedClientesRoute: AuthenticatedClientesRoute,
+  AuthenticatedConfiguracionRoute: AuthenticatedConfiguracionRoute,
+  AuthenticatedCrmRoute: AuthenticatedCrmRoute,
   AuthenticatedInicioRoute: AuthenticatedInicioRoute,
+  AuthenticatedResumenRoute: AuthenticatedResumenRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
@@ -275,3 +278,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
