@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { RECOMENDADOS } from "@/lib/rubros";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -167,14 +168,18 @@ const COMPLEMENTOS: { key: string; label: string; descripcion: string; ruta: str
 
 function ModulosCard({ profesionalId }: { profesionalId: string }) {
   const [modulos, setModulos] = useState<Record<string, boolean>>({});
+  const [rubro, setRubro] = useState<string>("");
 
   useEffect(() => {
     supabase
       .from("profesionales")
-      .select("modulos")
+      .select("modulos, rubro")
       .eq("id", profesionalId)
       .maybeSingle()
-      .then(({ data }) => setModulos((data?.modulos as Record<string, boolean>) ?? {}));
+      .then(({ data }) => {
+        setModulos((data?.modulos as Record<string, boolean>) ?? {});
+        setRubro((data?.rubro as string) ?? "");
+      });
   }, [profesionalId]);
 
   async function toggle(key: string, val: boolean) {
@@ -217,7 +222,14 @@ function ModulosCard({ profesionalId }: { profesionalId: string }) {
                       <Icon className="h-4 w-4" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium">{m.label}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium">{m.label}</p>
+                        {(RECOMENDADOS[rubro] ?? []).includes(m.key) && (
+                          <span className="rounded-full bg-foreground px-2 py-0.5 text-[10px] font-medium text-background">
+                            Recomendado
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-muted-foreground">{m.descripcion}</p>
                     </div>
                   </div>

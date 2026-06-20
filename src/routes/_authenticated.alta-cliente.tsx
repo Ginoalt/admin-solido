@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { RECOMENDADOS, MODULO_LABEL } from "@/lib/rubros";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -355,6 +356,80 @@ const PLANTILLAS: Record<string, Plantilla> = {
   },
 };
 
+// Ficha de conocimiento que se siembra para el bot por rubro (el cliente la edita con sus precios/horarios).
+const CONOCIMIENTO_RUBRO: Record<string, string> = {
+  abogado:
+    "Somos un estudio jurídico. Atendemos consultas en distintas áreas (penal, civil, laboral, familia). Para avanzar pedimos el motivo de la consulta y coordinamos una reunión con un abogado. Los honorarios se informan según el caso.",
+  contador:
+    "Somos un estudio contable. Ofrecemos monotributo, responsable inscripto, sociedades y liquidación de sueldos. Para asesorarte pedimos qué necesitás y coordinamos una reunión. Los honorarios dependen del servicio.",
+  medico:
+    "Somos un consultorio médico. Atendemos por turno. Para agendar pedimos nombre, motivo de consulta y obra social. Los horarios y aranceles los confirma la secretaría.",
+  dentista:
+    "Somos un consultorio odontológico. Ofrecemos consultas, limpieza, ortodoncia, implantes y blanqueamiento. Para un turno pedimos nombre y motivo. Obras sociales y precios los confirma el equipo.",
+  psicologo:
+    "Somos un consultorio de psicología. Atendemos en modalidad presencial y online. Para una primera sesión pedimos nombre y un breve motivo. Los honorarios se informan al coordinar.",
+  nutricionista:
+    "Somos un consultorio de nutrición. Ayudamos con planes para bajar de peso, salud, masa muscular o deportivos. Para una consulta pedimos tu objetivo y coordinamos día y horario.",
+  estetica:
+    "Somos un centro de estética. Ofrecemos distintos tratamientos faciales y corporales. Para reservar pedimos qué tratamiento te interesa y coordinamos un turno. Precios y duración se informan según el tratamiento.",
+  peluqueria:
+    "Somos una peluquería/barbería. Ofrecemos corte, color, peinado y barba. Para reservar un turno pedimos el servicio y el día preferido. Los precios varían según el servicio.",
+  veterinaria:
+    "Somos una veterinaria. Atendemos controles, vacunas, urgencias y peluquería de mascotas. Para un turno pedimos el nombre de la mascota y el motivo. En urgencias indicá contacto directo.",
+  inmobiliaria:
+    "Somos una inmobiliaria. Operamos venta y alquiler de departamentos, casas, locales y terrenos. Para ayudarte pedimos qué buscás (tipo, zona, presupuesto) y coordinamos una visita.",
+  constructora:
+    "Hacemos construcción, reformas, ampliaciones y pintura. Para presupuestar pedimos el tipo de obra y la zona, y coordinamos una visita técnica.",
+  hogar:
+    "Ofrecemos servicios para el hogar (plomería, electricidad, gas, pintura, fletes). Para ayudarte pedimos qué necesitás y la zona, y coordinamos una visita o presupuesto.",
+  taller:
+    "Somos un taller mecánico. Hacemos diagnósticos, reparaciones y service. Para presupuestar pedimos datos del vehículo y el problema, y coordinamos un turno.",
+  automotriz:
+    "Somos una concesionaria. Vendemos 0km y usados, con financiación y planes de ahorro. Para asesorarte pedimos qué modelo te interesa y coordinamos una visita o test drive.",
+  gimnasio:
+    "Somos un gimnasio/estudio. Ofrecemos distintos planes y actividades. Para sumarte contamos los planes y coordinamos una clase de prueba. Horarios y precios se informan según el plan.",
+  academia:
+    "Somos una academia de cursos. Ofrecemos cursos presenciales y online. Para sumarte contamos el curso, la modalidad y los horarios, y coordinamos una clase de prueba.",
+  escuela:
+    "Somos una institución educativa. Informamos sobre vacantes, niveles, aranceles y requisitos de inscripción. Para avanzar ofrecemos coordinar una visita o entrevista. Los detalles los confirma la secretaría.",
+  restaurante:
+    "Somos un restaurante. Tomamos reservas y consultas sobre el menú. Para reservar pedimos día, horario y cantidad de personas.",
+  turismo:
+    "Somos una agencia de viajes. Armamos viajes a distintos destinos. Para cotizar pedimos destino, fechas y cantidad de pasajeros.",
+  seguros:
+    "Somos productores de seguros. Ofrecemos seguros de auto, hogar, vida y comercio. Para cotizar pedimos qué seguro necesitás y algunos datos básicos.",
+  comercio:
+    "Somos un comercio. Vendemos distintos productos y servicios. Para ayudarte respondemos sobre productos, precios y formas de pago, y coordinamos la compra o un presupuesto.",
+  otro:
+    "Atendemos las consultas de nuestros clientes y coordinamos lo que necesiten. Para ayudarte mejor, contanos qué buscás.",
+};
+
+// Automatización de seguimiento lista por rubro (se activa al prender el módulo Automatizaciones).
+const AUTOMATIZACION_RUBRO: Record<string, { nombre: string; tarea_titulo: string; tarea_dias: number }> = {
+  abogado: { nombre: "Seguir a cada lead nuevo", tarea_titulo: "Llamar para coordinar la consulta", tarea_dias: 1 },
+  contador: { nombre: "Seguir a cada lead nuevo", tarea_titulo: "Contactar para coordinar reunión", tarea_dias: 1 },
+  medico: { nombre: "Seguir a cada lead nuevo", tarea_titulo: "Confirmar el turno", tarea_dias: 1 },
+  dentista: { nombre: "Seguir a cada lead nuevo", tarea_titulo: "Confirmar el turno", tarea_dias: 1 },
+  psicologo: { nombre: "Seguir a cada lead nuevo", tarea_titulo: "Contactar para la primera sesión", tarea_dias: 1 },
+  nutricionista: { nombre: "Seguir a cada lead nuevo", tarea_titulo: "Contactar para la consulta", tarea_dias: 1 },
+  estetica: { nombre: "Seguir a cada lead nuevo", tarea_titulo: "Confirmar el turno", tarea_dias: 1 },
+  peluqueria: { nombre: "Seguir a cada lead nuevo", tarea_titulo: "Confirmar el turno", tarea_dias: 1 },
+  veterinaria: { nombre: "Seguir a cada lead nuevo", tarea_titulo: "Confirmar el turno", tarea_dias: 1 },
+  inmobiliaria: { nombre: "Seguir a cada lead nuevo", tarea_titulo: "Llamar para coordinar la visita", tarea_dias: 1 },
+  constructora: { nombre: "Seguir a cada lead nuevo", tarea_titulo: "Coordinar visita técnica", tarea_dias: 2 },
+  hogar: { nombre: "Seguir a cada lead nuevo", tarea_titulo: "Pasar presupuesto", tarea_dias: 1 },
+  taller: { nombre: "Seguir a cada lead nuevo", tarea_titulo: "Pasar presupuesto o coordinar turno", tarea_dias: 1 },
+  automotriz: { nombre: "Seguir a cada lead nuevo", tarea_titulo: "Llamar y coordinar test drive", tarea_dias: 1 },
+  gimnasio: { nombre: "Seguir a cada lead nuevo", tarea_titulo: "Invitar a la clase de prueba", tarea_dias: 1 },
+  academia: { nombre: "Seguir a cada lead nuevo", tarea_titulo: "Invitar a la clase de prueba", tarea_dias: 1 },
+  escuela: { nombre: "Seguir a cada lead nuevo", tarea_titulo: "Coordinar visita o entrevista", tarea_dias: 2 },
+  restaurante: { nombre: "Seguir a cada lead nuevo", tarea_titulo: "Confirmar la reserva", tarea_dias: 1 },
+  turismo: { nombre: "Seguir a cada lead nuevo", tarea_titulo: "Enviar la cotización", tarea_dias: 1 },
+  seguros: { nombre: "Seguir a cada lead nuevo", tarea_titulo: "Enviar la cotización", tarea_dias: 1 },
+  comercio: { nombre: "Seguir a cada lead nuevo", tarea_titulo: "Contactar y pasar presupuesto", tarea_dias: 1 },
+  otro: { nombre: "Seguir a cada lead nuevo", tarea_titulo: "Contactar al lead", tarea_dias: 1 },
+};
+
 function tipoDeEtapa(nombre: string): string {
   const n = nombre.toLowerCase();
   if (
@@ -484,6 +559,30 @@ function AltaClientePage() {
       return;
     }
 
+    // Pre-carga por rubro (no bloquea el alta si algo falla).
+    const conocimiento = CONOCIMIENTO_RUBRO[rubro];
+    if (conocimiento) {
+      await supabase.from("documentos").insert({
+        profesional_id: pid,
+        nombre_archivo: "Información del negocio",
+        contenido: conocimiento,
+        tipo: "texto",
+        estado: "listo",
+      });
+    }
+    const auto = AUTOMATIZACION_RUBRO[rubro];
+    if (auto) {
+      await supabase.from("reglas_automatizacion").insert({
+        profesional_id: pid,
+        nombre: auto.nombre,
+        evento: "lead_nuevo",
+        accion: "crear_tarea",
+        tarea_titulo: auto.tarea_titulo,
+        tarea_dias: auto.tarea_dias,
+        activa: true,
+      });
+    }
+
     setSaving(false);
     navigate({ to: "/clientes" });
   }
@@ -601,6 +700,31 @@ function AltaClientePage() {
                   </ul>
                 )}
               </div>
+              <div>
+                <p className="font-medium mb-1">Se pre-carga también</p>
+                <ul className="list-disc list-inside text-muted-foreground">
+                  <li>Una ficha de conocimiento para el bot (editala después en Conocimiento).</li>
+                  <li>Una automatización de seguimiento lista (se activa con el módulo Automatizaciones).</li>
+                </ul>
+              </div>
+              {(RECOMENDADOS[rubro] ?? []).length > 0 && (
+                <div>
+                  <p className="font-medium mb-1">Complementos recomendados para este rubro</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(RECOMENDADOS[rubro] ?? []).map((k) => (
+                      <span
+                        key={k}
+                        className="rounded-full border bg-secondary px-3 py-1 text-xs font-medium"
+                      >
+                        {MODULO_LABEL[k] ?? k}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    Los prendés (y vendés) desde Configuración cuando el cliente los necesite.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
