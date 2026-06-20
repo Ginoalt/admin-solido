@@ -37,7 +37,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Sparkles, Pencil, Trash2, KeyRound, Search } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Plus, Sparkles, Pencil, Trash2, KeyRound, Search, CircleDollarSign } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/clientes")({
   component: ClientesPage,
@@ -49,6 +50,9 @@ type Profesional = {
   rubro: string | null;
   email_contacto: string | null;
   estado: string | null;
+  precio_mensual: number;
+  pagado_hasta: string | null;
+  modulos: Record<string, boolean> | null;
 };
 
 const ESTADO_COLOR: Record<string, string> = {
@@ -56,6 +60,30 @@ const ESTADO_COLOR: Record<string, string> = {
   prueba: "bg-muted text-muted-foreground",
   pausado: "bg-muted text-muted-foreground",
 };
+
+const MODULOS_PREMIUM = ["automatizaciones", "productos", "equipo", "reportes", "pagos"];
+
+function money(n: number): string {
+  try {
+    return new Intl.NumberFormat("es-AR", {
+      style: "currency",
+      currency: "ARS",
+      maximumFractionDigits: 0,
+    }).format(n || 0);
+  } catch {
+    return `$${Math.round(n || 0)}`;
+  }
+}
+
+function alDia(pagadoHasta: string | null): boolean {
+  if (!pagadoHasta) return false;
+  return pagadoHasta >= new Date().toISOString().slice(0, 10);
+}
+
+function modulosCount(modulos: Record<string, boolean> | null): number {
+  if (!modulos) return 0;
+  return MODULOS_PREMIUM.filter((k) => modulos[k] === true).length;
+}
 
 function ClientesPage() {
   const [rows, setRows] = useState<Profesional[]>([]);
@@ -72,7 +100,7 @@ function ClientesPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("profesionales")
-      .select("id, nombre, rubro, email_contacto, estado")
+      .select("id, nombre, rubro, email_contacto, estado, precio_mensual, pagado_hasta, modulos")
       .order("nombre", { ascending: true });
     if (error) setError(error.message);
     else setRows((data ?? []) as Profesional[]);
@@ -94,6 +122,21 @@ function ClientesPage() {
     setDeleting(null);
     load();
   }
+
+  async function marcarPago(r: Profesional) {
+    const hoyStr = new Date().toISOString().slice(0, 10);
+    const base = r.pagado_hasta && r.pagado_hasta >= hoyStr ? new Date(r.pagado_hasta) : new Date();
+    base.setMonth(base.getMonth() + 1);
+    await supabase
+      .from("profesionales")
+      .update({ pagado_hasta: base.toISOString().slice(0, 10), estado: "activo" })
+      .eq("id", r.id);
+    load();
+  }
+
+  const activos = rows.filter((r) => r.estado === "activo").length;
+  const mrr = rows.filter((r) => r.estado === "activo").reduce((s, r) => s + (r.precio_mensual || 0), 0);
+  const porCobrar = rows.filter((r) => r.estado !== "pausado" && !alDia(r.pagado_hasta)).length;
 
   const filtradas = rows.filter((r) => {
     const t = q.trim().toLowerCase();
@@ -140,6 +183,35 @@ function ClientesPage() {
         </div>
       </div>
 
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground">Clientes activos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-semibold">{activos}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground">Ingreso mensual</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-semibold">{money(mrr)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground">Por cobrar</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-semibold ${porCobrar > 0 ? "text-destructive" : ""}`}>
+              {porCobrar}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="relative mb-4 max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
@@ -156,27 +228,29 @@ function ClientesPage() {
             <TableRow>
               <TableHead>Nombre</TableHead>
               <TableHead>Rubro</TableHead>
-              <TableHead>Email</TableHead>
               <TableHead>Estado</TableHead>
-              <TableHead className="w-32 text-right">Acciones</TableHead>
+              <TableHead>Precio</TableHead>
+              <TableHead>Pago</TableHead>
+              <TableHead className="text-center">Módulos</TableHead>
+              <TableHead className="w-44 text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                   Cargando...
                 </TableCell>
               </TableRow>
             ) : error ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-destructive py-8">
+                <TableCell colSpan={7} className="text-center text-destructive py-8">
                   {error}
                 </TableCell>
               </TableRow>
             ) : filtradas.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                   {rows.length === 0 ? "Sin registros" : "Sin resultados para tu búsqueda"}
                 </TableCell>
               </TableRow>
@@ -184,8 +258,7 @@ function ClientesPage() {
               filtradas.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell className="font-medium">{r.nombre}</TableCell>
-                  <TableCell>{r.rubro}</TableCell>
-                  <TableCell>{r.email_contacto}</TableCell>
+                  <TableCell className="text-muted-foreground">{r.rubro}</TableCell>
                   <TableCell>
                     <span
                       className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${
@@ -195,15 +268,36 @@ function ClientesPage() {
                       {r.estado}
                     </span>
                   </TableCell>
+                  <TableCell className="tabular-nums">
+                    {r.precio_mensual ? money(r.precio_mensual) : "—"}
+                  </TableCell>
+                  <TableCell>
+                    {r.pagado_hasta ? (
+                      <span
+                        className={`text-xs ${
+                          alDia(r.pagado_hasta) ? "text-muted-foreground" : "text-destructive font-medium"
+                        }`}
+                      >
+                        {alDia(r.pagado_hasta) ? "Al día · " : "Vencido · "}
+                        {new Date(r.pagado_hasta).toLocaleDateString("es-AR")}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-destructive">Sin pago</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-center text-sm tabular-nums">{modulosCount(r.modulos)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="icon" title="Marcar pago del mes" onClick={() => marcarPago(r)}>
+                        <CircleDollarSign className="h-4 w-4" />
+                      </Button>
                       <Button variant="ghost" size="icon" title="Dar acceso" onClick={() => setInviting(r)}>
                         <KeyRound className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => setEditing(r)}>
+                      <Button variant="ghost" size="icon" title="Editar" onClick={() => setEditing(r)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => setDeleting(r)}>
+                      <Button variant="ghost" size="icon" title="Borrar" onClick={() => setDeleting(r)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
@@ -289,6 +383,7 @@ function ClienteForm({
   const [rubro, setRubro] = useState(initial?.rubro ?? "abogado");
   const [email, setEmail] = useState(initial?.email_contacto ?? "");
   const [estado, setEstado] = useState(initial?.estado ?? "prueba");
+  const [precio, setPrecio] = useState(initial?.precio_mensual != null ? String(initial.precio_mensual) : "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -301,6 +396,7 @@ function ClienteForm({
       rubro,
       email_contacto: email,
       estado,
+      precio_mensual: Math.max(0, parseFloat(precio) || 0),
     };
     const { error } = initial
       ? await supabase.from("profesionales").update(payload).eq("id", initial.id)
@@ -344,6 +440,17 @@ function ClienteForm({
             <SelectItem value="pausado">Pausado</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="precio">Precio mensual (ARS)</Label>
+        <Input
+          id="precio"
+          type="number"
+          min="0"
+          value={precio}
+          onChange={(e) => setPrecio(e.target.value)}
+          placeholder="0"
+        />
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
       <DialogFooter>
