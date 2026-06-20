@@ -663,6 +663,30 @@ function FichaLeadDialog({
   const [fechaCita, setFechaCita] = useState("");
   const [agendando, setAgendando] = useState(false);
   const [citaMsg, setCitaMsg] = useState<string | null>(null);
+  const [conversacion, setConversacion] = useState<
+    { direccion: string | null; contenido: string | null; created_at: string }[]
+  >([]);
+  const [citasLead, setCitasLead] = useState<{ fecha_hora: string; estado: string | null }[]>([]);
+
+  useEffect(() => {
+    supabase
+      .from("mensajes")
+      .select("direccion, contenido, created_at")
+      .eq("lead_id", lead.id)
+      .order("created_at", { ascending: true })
+      .limit(40)
+      .then(({ data }) =>
+        setConversacion(
+          (data ?? []) as { direccion: string | null; contenido: string | null; created_at: string }[],
+        ),
+      );
+    supabase
+      .from("citas")
+      .select("fecha_hora, estado")
+      .eq("lead_id", lead.id)
+      .order("fecha_hora", { ascending: false })
+      .then(({ data }) => setCitasLead((data ?? []) as { fecha_hora: string; estado: string | null }[]));
+  }, [lead.id]);
 
   async function handleDelete() {
     setDeleting(true);
@@ -814,7 +838,50 @@ function FichaLeadDialog({
           <Textarea id="ficha-notas" rows={3} value={notas} onChange={(e) => setNotas(e.target.value)} />
         </div>
 
+        {conversacion.length > 0 && (
+          <div className="space-y-2 border-t pt-4">
+            <p className="text-sm font-medium text-muted-foreground">Conversación</p>
+            <div className="max-h-56 space-y-1.5 overflow-y-auto rounded-lg border p-2">
+              {conversacion.map((m, i) => {
+                const saliente = m.direccion === "saliente";
+                return (
+                  <div key={i} className={`flex ${saliente ? "justify-end" : "justify-start"}`}>
+                    <div
+                      className={`max-w-[80%] rounded-lg px-2.5 py-1.5 text-xs whitespace-pre-wrap ${
+                        saliente ? "bg-foreground text-background" : "bg-muted"
+                      }`}
+                    >
+                      {m.contenido}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <TareasLead profesionalId={profesionalId} leadId={lead.id} />
+
+        {citasLead.length > 0 && (
+          <div className="space-y-2 border-t pt-4">
+            <p className="text-sm font-medium text-muted-foreground">Citas</p>
+            <ul className="space-y-1 text-sm">
+              {citasLead.map((c, i) => (
+                <li key={i} className="flex items-center justify-between">
+                  <span>
+                    {new Date(c.fecha_hora).toLocaleString("es-AR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                  <span className="text-xs text-muted-foreground">{c.estado ?? "—"}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <div className="space-y-2 border-t pt-4">
           <Label htmlFor="ficha-cita">Agendar consulta</Label>
