@@ -59,6 +59,7 @@ function ChatsPage() {
   const [texto, setTexto] = useState("");
   const [loading, setLoading] = useState(true);
   const [errEnvio, setErrEnvio] = useState<string | null>(null);
+  const [respuestas, setRespuestas] = useState<string[]>([]);
 
   useEffect(() => {
     supabase
@@ -85,8 +86,18 @@ function ChatsPage() {
   useEffect(() => {
     setActiva(null);
     setMensajes([]);
-    if (selId) cargarConvs(selId);
-    else setConvs([]);
+    if (selId) {
+      cargarConvs(selId);
+      supabase
+        .from("respuestas_rapidas")
+        .select("texto")
+        .eq("profesional_id", selId)
+        .order("orden", { ascending: true })
+        .then(({ data }) => setRespuestas(((data ?? []) as { texto: string }[]).map((r) => r.texto)));
+    } else {
+      setConvs([]);
+      setRespuestas([]);
+    }
   }, [selId]);
 
   async function abrir(c: Conversacion) {
@@ -246,6 +257,21 @@ function ChatsPage() {
 
               {errEnvio && (
                 <p className="px-3 pt-2 text-xs text-destructive">{errEnvio}</p>
+              )}
+              {!activa.bot_activo && respuestas.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 border-t px-3 pt-2">
+                  {respuestas.map((r, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setTexto(r)}
+                      title={r}
+                      className="max-w-[14rem] truncate rounded-full border bg-secondary px-2.5 py-1 text-xs text-foreground hover:bg-muted"
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
               )}
               <form
                 onSubmit={(e) => {
