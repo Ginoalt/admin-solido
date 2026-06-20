@@ -109,6 +109,7 @@ function ConfiguracionPage() {
       </div>
 
       {selId && <ModulosCard key={`mod-${selId}`} profesionalId={selId} />}
+      {selId && <MarcaCard key={`marca-${selId}`} profesionalId={selId} />}
       {selId && <CanalCard key={`canal-${selId}`} profesionalId={selId} />}
       {selId && <TypebotCard key={`typebot-${selId}`} profesionalId={selId} />}
       {selId && <BotCard key={`bot-${selId}`} profesionalId={selId} />}
@@ -409,6 +410,83 @@ function slugify(s: string): string {
     .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
+}
+
+function MarcaCard({ profesionalId }: { profesionalId: string }) {
+  const [nombre, setNombre] = useState("");
+  const [logo, setLogo] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase
+      .from("profesionales")
+      .select("marca_nombre, marca_logo_url")
+      .eq("id", profesionalId)
+      .maybeSingle()
+      .then(({ data }) => {
+        setNombre((data?.marca_nombre as string) ?? "");
+        setLogo((data?.marca_logo_url as string) ?? "");
+      });
+  }, [profesionalId]);
+
+  async function guardar(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setErr(null);
+    setMsg(null);
+    const { error } = await supabase
+      .from("profesionales")
+      .update({ marca_nombre: nombre.trim() || null, marca_logo_url: logo.trim() || null })
+      .eq("id", profesionalId);
+    setSaving(false);
+    if (error) {
+      setErr(error.message);
+      return;
+    }
+    setMsg("Guardado. El cliente verá su marca al recargar.");
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Marca del cliente (white-label)</CardTitle>
+        <CardDescription>
+          El nombre y el logo que el cliente ve en su panel. Si lo dejás vacío, ve la marca por defecto.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={guardar} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="marca-nombre">Nombre de la marca</Label>
+            <Input
+              id="marca-nombre"
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              placeholder="Ej: Estudio Pérez"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="marca-logo">Logo (URL de imagen)</Label>
+            <Input
+              id="marca-logo"
+              value={logo}
+              onChange={(e) => setLogo(e.target.value)}
+              placeholder="https://..."
+            />
+          </div>
+          <div className="flex items-center gap-3">
+            <Button type="submit" disabled={saving}>
+              {saving ? "Guardando..." : "Guardar marca"}
+            </Button>
+            {msg && <span className="text-sm text-muted-foreground">{msg}</span>}
+            {err && <span className="text-sm text-destructive">{err}</span>}
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
 }
 
 type Respuesta = { id: string; texto: string; orden: number };
