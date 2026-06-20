@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedResumenRouteImport } from './routes/_authenticated.resumen'
+import { Route as AuthenticatedProductosRouteImport } from './routes/_authenticated.productos'
 import { Route as AuthenticatedInicioRouteImport } from './routes/_authenticated.inicio'
 import { Route as AuthenticatedCrmRouteImport } from './routes/_authenticated.crm'
 import { Route as AuthenticatedConfiguracionRouteImport } from './routes/_authenticated.configuracion'
@@ -39,6 +40,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthenticatedResumenRoute = AuthenticatedResumenRouteImport.update({
   id: '/resumen',
   path: '/resumen',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedProductosRoute = AuthenticatedProductosRouteImport.update({
+  id: '/productos',
+  path: '/productos',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedInicioRoute = AuthenticatedInicioRouteImport.update({
@@ -96,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/configuracion': typeof AuthenticatedConfiguracionRoute
   '/crm': typeof AuthenticatedCrmRoute
   '/inicio': typeof AuthenticatedInicioRoute
+  '/productos': typeof AuthenticatedProductosRoute
   '/resumen': typeof AuthenticatedResumenRoute
 }
 export interface FileRoutesByTo {
@@ -109,6 +116,7 @@ export interface FileRoutesByTo {
   '/configuracion': typeof AuthenticatedConfiguracionRoute
   '/crm': typeof AuthenticatedCrmRoute
   '/inicio': typeof AuthenticatedInicioRoute
+  '/productos': typeof AuthenticatedProductosRoute
   '/resumen': typeof AuthenticatedResumenRoute
 }
 export interface FileRoutesById {
@@ -124,6 +132,7 @@ export interface FileRoutesById {
   '/_authenticated/configuracion': typeof AuthenticatedConfiguracionRoute
   '/_authenticated/crm': typeof AuthenticatedCrmRoute
   '/_authenticated/inicio': typeof AuthenticatedInicioRoute
+  '/_authenticated/productos': typeof AuthenticatedProductosRoute
   '/_authenticated/resumen': typeof AuthenticatedResumenRoute
 }
 export interface FileRouteTypes {
@@ -139,6 +148,7 @@ export interface FileRouteTypes {
     | '/configuracion'
     | '/crm'
     | '/inicio'
+    | '/productos'
     | '/resumen'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -152,6 +162,7 @@ export interface FileRouteTypes {
     | '/configuracion'
     | '/crm'
     | '/inicio'
+    | '/productos'
     | '/resumen'
   id:
     | '__root__'
@@ -166,6 +177,7 @@ export interface FileRouteTypes {
     | '/_authenticated/configuracion'
     | '/_authenticated/crm'
     | '/_authenticated/inicio'
+    | '/_authenticated/productos'
     | '/_authenticated/resumen'
   fileRoutesById: FileRoutesById
 }
@@ -203,6 +215,13 @@ declare module '@tanstack/react-router' {
       path: '/resumen'
       fullPath: '/resumen'
       preLoaderRoute: typeof AuthenticatedResumenRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/productos': {
+      id: '/_authenticated/productos'
+      path: '/productos'
+      fullPath: '/productos'
+      preLoaderRoute: typeof AuthenticatedProductosRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/inicio': {
@@ -273,6 +292,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedConfiguracionRoute: typeof AuthenticatedConfiguracionRoute
   AuthenticatedCrmRoute: typeof AuthenticatedCrmRoute
   AuthenticatedInicioRoute: typeof AuthenticatedInicioRoute
+  AuthenticatedProductosRoute: typeof AuthenticatedProductosRoute
   AuthenticatedResumenRoute: typeof AuthenticatedResumenRoute
 }
 
@@ -285,6 +305,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedConfiguracionRoute: AuthenticatedConfiguracionRoute,
   AuthenticatedCrmRoute: AuthenticatedCrmRoute,
   AuthenticatedInicioRoute: AuthenticatedInicioRoute,
+  AuthenticatedProductosRoute: AuthenticatedProductosRoute,
   AuthenticatedResumenRoute: AuthenticatedResumenRoute,
 }
 
