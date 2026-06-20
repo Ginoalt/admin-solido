@@ -48,17 +48,17 @@ const ESTADOS: Record<string, string> = {
 };
 
 const COLOR_ESTADO: Record<string, string> = {
-  agendada: "bg-blue-500",
-  confirmada: "bg-emerald-500",
-  atendida: "bg-green-600",
-  no_show: "bg-amber-500",
-  cancelada: "bg-rose-500",
+  agendada: "bg-muted-foreground/40",
+  confirmada: "bg-foreground",
+  atendida: "bg-foreground",
+  no_show: "bg-destructive",
+  cancelada: "bg-destructive",
 };
 
 const COLOR_TIPO: Record<string, string> = {
-  ganado: "bg-emerald-500",
-  perdido: "bg-rose-500",
-  normal: "bg-blue-500",
+  ganado: "bg-foreground",
+  perdido: "bg-destructive",
+  normal: "bg-muted-foreground/40",
 };
 
 const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
@@ -86,10 +86,10 @@ function Gauge({ value }: { value: number }) {
   const ey = cy - r * Math.sin(theta);
   const bg = `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`;
   const fg = `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${ex.toFixed(2)} ${ey.toFixed(2)}`;
-  const color = v >= 70 ? "#10b981" : v >= 40 ? "#f59e0b" : "#f43f5e";
+  const color = v >= 40 ? "#18181b" : "#dc2626";
   return (
     <svg viewBox="0 0 200 120" className="w-full max-w-[240px]">
-      <path d={bg} fill="none" stroke="hsl(var(--muted))" strokeWidth="16" strokeLinecap="round" />
+      <path d={bg} fill="none" stroke="#e5e5e5" strokeWidth="16" strokeLinecap="round" />
       <path d={fg} fill="none" stroke={color} strokeWidth="16" strokeLinecap="round" />
       <text x="100" y="92" textAnchor="middle" className="fill-foreground" fontSize="30" fontWeight="700">
         {Math.round(v)}%
@@ -328,12 +328,12 @@ function InicioPage() {
                 <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full">
                   <div className="flex items-end justify-center gap-0.5 w-full h-full">
                     <div
-                      className="w-2.5 rounded-t bg-blue-500"
+                      className="w-2.5 rounded-t bg-muted-foreground/30"
                       style={{ height: `${(m.agendadas / maxMes) * 100}%` }}
                       title={`${m.agendadas} agendadas`}
                     />
                     <div
-                      className="w-2.5 rounded-t bg-emerald-500"
+                      className="w-2.5 rounded-t bg-foreground"
                       style={{ height: `${(m.atendidas / maxMes) * 100}%` }}
                       title={`${m.atendidas} atendidas`}
                     />
@@ -344,10 +344,10 @@ function InicioPage() {
             </div>
             <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-blue-500" /> Agendadas
+                <span className="h-2 w-2 rounded-full bg-muted-foreground/30" /> Agendadas
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-emerald-500" /> Atendidas
+                <span className="h-2 w-2 rounded-full bg-foreground" /> Atendidas
               </span>
             </div>
           </CardContent>
@@ -384,7 +384,7 @@ function InicioPage() {
                   label={p.nombre}
                   value={p.count}
                   max={maxPipeline}
-                  color={COLOR_TIPO[p.tipo] ?? "bg-blue-500"}
+                  color={COLOR_TIPO[p.tipo] ?? "bg-muted-foreground/40"}
                 />
               ))
             )}
@@ -483,7 +483,7 @@ function InicioPage() {
                       <p className="text-sm font-medium">{c.leads?.nombre || "Sin lead"}</p>
                       <p className="text-xs text-muted-foreground">{c.profesionales?.nombre || "—"}</p>
                     </div>
-                    <span className="text-xs text-amber-600">sin marcar</span>
+                    <span className="text-xs text-muted-foreground">sin marcar</span>
                   </li>
                 ))}
               </ul>
@@ -517,7 +517,7 @@ function InicioPage() {
                       <p className="text-xs text-muted-foreground">{t.leads?.nombre || "Sin lead"}</p>
                     </div>
                     {t.vence && (
-                      <span className={`text-xs ${vencida ? "text-rose-600" : "text-muted-foreground"}`}>
+                      <span className={`text-xs ${vencida ? "text-destructive" : "text-muted-foreground"}`}>
                         {vencida ? "vencida · " : ""}
                         {t.vence}
                       </span>

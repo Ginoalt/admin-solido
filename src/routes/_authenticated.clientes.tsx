@@ -52,8 +52,8 @@ type Profesional = {
 };
 
 const ESTADO_COLOR: Record<string, string> = {
-  activo: "bg-emerald-100 text-emerald-700",
-  prueba: "bg-amber-100 text-amber-700",
+  activo: "bg-foreground/10 text-foreground",
+  prueba: "bg-muted text-muted-foreground",
   pausado: "bg-muted text-muted-foreground",
 };
 
