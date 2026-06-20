@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useMiPerfil, clearPerfilCache } from "@/lib/perfil";
 import { MARCA, MARCA_INICIAL } from "@/lib/brand";
-import { LayoutDashboard, TrendingUp, Users, Workflow, CalendarDays, MessageSquare, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, TrendingUp, Users, Workflow, CalendarDays, MessageSquare, Settings, LogOut, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -17,6 +17,7 @@ type NavItem = {
   icon: typeof LayoutDashboard;
   adminOnly: boolean;
   modulo?: string;
+  premium?: boolean;
   seccion: "principal" | "admin";
 };
 
@@ -26,6 +27,7 @@ const nav: NavItem[] = [
   { to: "/chats", label: "Chats", icon: MessageSquare, adminOnly: false, modulo: "chats", seccion: "principal" },
   { to: "/agenda", label: "Agenda", icon: CalendarDays, adminOnly: false, modulo: "agenda", seccion: "principal" },
   { to: "/resumen", label: "Resumen", icon: TrendingUp, adminOnly: false, modulo: "resumen", seccion: "principal" },
+  { to: "/automatizaciones", label: "Automatizaciones", icon: Zap, adminOnly: false, modulo: "automatizaciones", premium: true, seccion: "principal" },
   { to: "/clientes", label: "Clientes", icon: Users, adminOnly: true, seccion: "admin" },
   { to: "/configuracion", label: "Configuración", icon: Settings, adminOnly: true, seccion: "admin" },
 ];
@@ -62,10 +64,12 @@ function NavGroup({ items, label, pathname }: { items: NavItem[]; label: string;
 // Secciones que solo puede ver el admin (Gino). Si un cliente las pide, lo mandamos al inicio.
 const RUTAS_ADMIN = ["/clientes", "/configuracion", "/alta-cliente"];
 
-// Un módulo está activo salvo que el admin lo haya apagado para ese cliente (el "telón").
-function moduloActivo(modulos: Record<string, boolean> | undefined, key?: string) {
-  if (!key) return true;
-  return modulos?.[key] !== false;
+// El "telón": un módulo base se ve salvo que el admin lo apague para ese cliente. Un módulo
+// PREMIUM (para vender) está APAGADO por defecto y solo se ve si el admin lo prende.
+function moduloVisible(modulos: Record<string, boolean> | undefined, item: NavItem) {
+  if (!item.modulo) return true;
+  if (item.premium) return modulos?.[item.modulo] === true;
+  return modulos?.[item.modulo] !== false;
 }
 
 function AuthLayout() {
@@ -94,7 +98,7 @@ function AuthLayout() {
     if (perfilLoading || esAdmin) return;
     const bloqueadaAdmin = RUTAS_ADMIN.some((p) => pathname.startsWith(p));
     const moduloApagado = nav.some(
-      (i) => i.modulo && !moduloActivo(perfil?.modulos, i.modulo) && pathname.startsWith(i.to),
+      (i) => i.modulo && !moduloVisible(perfil?.modulos, i) && pathname.startsWith(i.to),
     );
     if (bloqueadaAdmin || moduloApagado) navigate({ to: "/inicio" });
   }, [perfilLoading, esAdmin, pathname, perfil, navigate]);
@@ -132,7 +136,7 @@ function AuthLayout() {
   const items = nav.filter((item) => {
     if (esAdmin) return true;
     if (item.adminOnly) return false;
-    return moduloActivo(perfil?.modulos, item.modulo);
+    return moduloVisible(perfil?.modulos, item);
   });
   const principal = items.filter((i) => i.seccion === "principal");
   const admin = items.filter((i) => i.seccion === "admin");
