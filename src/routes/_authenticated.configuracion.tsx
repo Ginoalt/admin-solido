@@ -470,47 +470,76 @@ function CamposCard({ profesionalId }: { profesionalId: string }) {
   );
 }
 
+const WSP_WEBHOOK_URL =
+  "https://goygizqyithyqzctiljk.supabase.co/functions/v1/whatsapp-webhook";
+
 function CanalCard({ profesionalId }: { profesionalId: string }) {
   const [rowId, setRowId] = useState<string | null>(null);
+  const [proveedor, setProveedor] = useState("meta");
   const [numero, setNumero] = useState("");
   const [phoneNumberId, setPhoneNumberId] = useState("");
   const [wabaId, setWabaId] = useState("");
   const [accessToken, setAccessToken] = useState("");
+  const [evolutionUrl, setEvolutionUrl] = useState("");
+  const [evolutionInstance, setEvolutionInstance] = useState("");
+  const [evolutionApiKey, setEvolutionApiKey] = useState("");
   const [estado, setEstado] = useState("prueba");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [copiado, setCopiado] = useState<string | null>(null);
 
   useEffect(() => {
     supabase
       .from("canales_whatsapp")
-      .select("id, numero, phone_number_id, waba_id, access_token, estado")
+      .select(
+        "id, proveedor, numero, phone_number_id, waba_id, access_token, evolution_url, evolution_instance, evolution_api_key, estado",
+      )
       .eq("profesional_id", profesionalId)
       .limit(1)
       .maybeSingle()
       .then(({ data }) => {
         if (data) {
           setRowId(data.id as string);
+          setProveedor((data.proveedor as string) ?? "meta");
           setNumero((data.numero as string) ?? "");
           setPhoneNumberId((data.phone_number_id as string) ?? "");
           setWabaId((data.waba_id as string) ?? "");
           setAccessToken((data.access_token as string) ?? "");
+          setEvolutionUrl((data.evolution_url as string) ?? "");
+          setEvolutionInstance((data.evolution_instance as string) ?? "");
+          setEvolutionApiKey((data.evolution_api_key as string) ?? "");
           setEstado((data.estado as string) ?? "prueba");
         }
       });
   }, [profesionalId]);
+
+  function copiar(texto: string, cual: string) {
+    navigator.clipboard?.writeText(texto);
+    setCopiado(cual);
+    setTimeout(() => setCopiado(null), 1500);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     setErr(null);
     setMsg(null);
+    if (proveedor === "evolution" && (!evolutionUrl.trim() || !evolutionInstance.trim() || !evolutionApiKey.trim())) {
+      setSaving(false);
+      setErr("Para Evolution: completá la URL del servidor, la instancia y la API key.");
+      return;
+    }
     const payload = {
       profesional_id: profesionalId,
+      proveedor,
       numero,
       phone_number_id: phoneNumberId,
       waba_id: wabaId,
       access_token: accessToken,
+      evolution_url: evolutionUrl,
+      evolution_instance: evolutionInstance,
+      evolution_api_key: evolutionApiKey,
       estado,
     };
     let error = null;
@@ -526,40 +555,105 @@ function CanalCard({ profesionalId }: { profesionalId: string }) {
     else setMsg("Guardado");
   }
 
+  const esEvolution = proveedor === "evolution";
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Conexión de WhatsApp</CardTitle>
         <CardDescription>
-          Datos del número de Meta de este cliente. En Fase 1 va el número de prueba.
+          {esEvolution
+            ? "Conexión por Evolution API (servidor propio, número con QR). No oficial."
+            : "Conexión por Meta Cloud API (oficial). En Fase 1 va el número de prueba."}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
+            <Label htmlFor="proveedor">Proveedor</Label>
+            <Select value={proveedor} onValueChange={setProveedor}>
+              <SelectTrigger id="proveedor" className="w-72">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="meta">Meta Cloud API (oficial)</SelectItem>
+                <SelectItem value="evolution">Evolution API (servidor propio)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="numero">Número de WhatsApp</Label>
             <Input id="numero" value={numero} onChange={(e) => setNumero(e.target.value)} placeholder="+54 9 11 ..." />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="phone-id">Phone number ID (Meta)</Label>
-              <Input id="phone-id" value={phoneNumberId} onChange={(e) => setPhoneNumberId(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="waba-id">WABA ID (Meta)</Label>
-              <Input id="waba-id" value={wabaId} onChange={(e) => setWabaId(e.target.value)} />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="token">Access token</Label>
-            <Input
-              id="token"
-              type="password"
-              value={accessToken}
-              onChange={(e) => setAccessToken(e.target.value)}
-              placeholder="Se guarda en tu base (protegido por RLS)"
-            />
-          </div>
+
+          {!esEvolution && (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="phone-id">Phone number ID (Meta)</Label>
+                  <Input id="phone-id" value={phoneNumberId} onChange={(e) => setPhoneNumberId(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="waba-id">WABA ID (Meta)</Label>
+                  <Input id="waba-id" value={wabaId} onChange={(e) => setWabaId(e.target.value)} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="token">Access token</Label>
+                <Input
+                  id="token"
+                  type="password"
+                  value={accessToken}
+                  onChange={(e) => setAccessToken(e.target.value)}
+                  placeholder="Se guarda en tu base (protegido por RLS)"
+                />
+              </div>
+            </>
+          )}
+
+          {esEvolution && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="evo-url">URL del servidor Evolution</Label>
+                <Input
+                  id="evo-url"
+                  value={evolutionUrl}
+                  onChange={(e) => setEvolutionUrl(e.target.value)}
+                  placeholder="https://evo.tudominio.com"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="evo-instance">Nombre de la instancia</Label>
+                  <Input
+                    id="evo-instance"
+                    value={evolutionInstance}
+                    onChange={(e) => setEvolutionInstance(e.target.value)}
+                    placeholder="estudio-perez"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="evo-key">API key de la instancia</Label>
+                  <Input
+                    id="evo-key"
+                    type="password"
+                    value={evolutionApiKey}
+                    onChange={(e) => setEvolutionApiKey(e.target.value)}
+                    placeholder="Se guarda en tu base (protegido por RLS)"
+                  />
+                </div>
+              </div>
+              <FilaCopiar
+                etiqueta="Webhook para pegar en Evolution (evento messages.upsert)"
+                valor={WSP_WEBHOOK_URL}
+                cual="evo-webhook"
+                copiado={copiado}
+                onCopiar={copiar}
+              />
+            </>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="estado-canal">Estado</Label>
             <Select value={estado} onValueChange={setEstado}>

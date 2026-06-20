@@ -1,9 +1,9 @@
 // Edge Function: whatsapp-send  (la "boca" para respuestas MANUALES)
 //
 // Cuando el humano apaga el bot y contesta desde la Bandeja, este endpoint manda
-// ese mensaje por WhatsApp (Cloud API) con el numero/token del cliente y lo guarda
-// con el estado real (enviado/fallido). Reusa la normalizacion del numero argentino.
+// ese mensaje por WhatsApp con el canal del cliente y lo guarda con el estado real.
 //
+// SOPORTA DOS PROVEEDORES (canales_whatsapp.proveedor): 'meta' (Cloud API) o 'evolution'.
 // Lo llama el front autenticado -> Desplegar con "Verify JWT" ACTIVADO (como asistente-ia).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -59,13 +59,15 @@ Deno.serve(async (req) => {
 
   const pid = conv.profesional_id as string;
 
-  // 4) Canal de WhatsApp del cliente
+  // 4) Canal de WhatsApp del cliente (cualquier proveedor)
   const { data: canal } = await admin
     .from("canales_whatsapp")
-    .select("phone_number_id, access_token")
+    .select(
+      "proveedor, phone_number_id, access_token, evolution_url, evolution_instance, evolution_api_key",
+    )
     .eq("profesional_id", pid)
     .maybeSingle();
-  if (!canal?.phone_number_id || !canal?.access_token)
+  if (!canalConfigurado(canal))
     return json({ error: "Este cliente no tiene WhatsApp configurado" }, 400);
 
   // 5) Teléfono del lead
@@ -76,13 +78,8 @@ Deno.serve(async (req) => {
     .maybeSingle();
   if (!lead?.telefono) return json({ error: "El lead no tiene teléfono" }, 400);
 
-  // 6) Enviar por WhatsApp
-  const enviado = await enviarTexto(
-    canal.phone_number_id as string,
-    canal.access_token as string,
-    lead.telefono as string,
-    texto,
-  );
+  // 6) Enviar por WhatsApp con el proveedor del canal
+  const enviado = await enviarTexto(canal, lead.telefono as string, texto);
 
   // 7) Guardar el mensaje con el estado REAL
   await admin.from("mensajes").insert({
@@ -115,13 +112,29 @@ Deno.serve(async (req) => {
   }
 });
 
-async function enviarTexto(
+function canalConfigurado(canal: any): boolean {
+  if (!canal) return false;
+  if (canal.proveedor === "evolution") {
+    return !!(canal.evolution_url && canal.evolution_instance && canal.evolution_api_key);
+  }
+  return !!(canal.phone_number_id && canal.access_token);
+}
+
+// ---- ENVIO: elige el proveedor del canal ---------------------------------------------
+async function enviarTexto(canal: any, to: string, texto: string): Promise<boolean> {
+  if (canal?.proveedor === "evolution") {
+    return await enviarEvolution(canal, to, texto);
+  }
+  return await enviarMeta(canal?.phone_number_id, canal?.access_token, to, texto);
+}
+
+async function enviarMeta(
   phoneNumberId: string,
   token: string,
   to: string,
   texto: string,
 ): Promise<boolean> {
-  const destino = normalizarDestino(to);
+  const destino = normalizarDestinoMeta(to);
   try {
     const resp = await fetch(`${GRAPH}/${phoneNumberId}/messages`, {
       method: "POST",
@@ -134,18 +147,45 @@ async function enviarTexto(
       }),
     });
     if (!resp.ok) {
-      console.error(`WhatsApp send (destino ${destino}):`, await resp.text());
+      console.error(`Meta send (destino ${destino}):`, await resp.text());
       return false;
     }
     return true;
   } catch (e) {
-    console.error("WhatsApp send exception:", e);
+    console.error("Meta send exception:", e);
     return false;
   }
 }
 
-// Argentina: el `from` llega como 549XXXXXXXXXX pero hay que ENVIAR a 54XXXXXXXXXX (sin el 9).
-function normalizarDestino(to: string): string {
+// Evolution: se le envia al numero TAL CUAL (con el 9 en Argentina); el servidor rutea.
+async function enviarEvolution(canal: any, to: string, texto: string): Promise<boolean> {
+  const base = String(canal?.evolution_url ?? "").trim().replace(/\/+$/, "");
+  const instancia = String(canal?.evolution_instance ?? "").trim();
+  const apikey = String(canal?.evolution_api_key ?? "").trim();
+  if (!base || !instancia || !apikey) {
+    console.error("Evolution mal configurado (falta url, instancia o api key).");
+    return false;
+  }
+  const number = String(to).replace(/\D/g, "");
+  try {
+    const resp = await fetch(`${base}/message/sendText/${encodeURIComponent(instancia)}`, {
+      method: "POST",
+      headers: { apikey, "content-type": "application/json" },
+      body: JSON.stringify({ number, text: texto }),
+    });
+    if (!resp.ok) {
+      console.error(`Evolution send (number ${number}):`, await resp.text());
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error("Evolution send exception:", e);
+    return false;
+  }
+}
+
+// Argentina (SOLO Meta): el `from` llega como 549XXXXXXXXXX pero hay que ENVIAR a 54XXXXXXXXXX.
+function normalizarDestinoMeta(to: string): string {
   const limpio = String(to).replace(/\D/g, "");
   if (limpio.startsWith("549") && limpio.length === 13) {
     return "54" + limpio.slice(3);
