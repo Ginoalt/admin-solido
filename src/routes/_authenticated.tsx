@@ -36,7 +36,17 @@ const nav: NavItem[] = [
   { to: "/configuracion", label: "Configuración", icon: Settings, adminOnly: true, seccion: "admin" },
 ];
 
-function NavGroup({ items, label, pathname }: { items: NavItem[]; label: string; pathname: string }) {
+function NavGroup({
+  items,
+  label,
+  pathname,
+  badges,
+}: {
+  items: NavItem[];
+  label: string;
+  pathname: string;
+  badges: Record<string, number>;
+}) {
   if (items.length === 0) return null;
   return (
     <div className="space-y-1">
@@ -46,6 +56,7 @@ function NavGroup({ items, label, pathname }: { items: NavItem[]; label: string;
       {items.map((item) => {
         const Icon = item.icon;
         const active = pathname.startsWith(item.to);
+        const badge = badges[item.to] ?? 0;
         return (
           <Link
             key={item.to}
@@ -58,6 +69,15 @@ function NavGroup({ items, label, pathname }: { items: NavItem[]; label: string;
           >
             <Icon className="h-4 w-4 shrink-0" />
             {item.label}
+            {badge > 0 && (
+              <span
+                className={`ml-auto min-w-[1.25rem] rounded-full px-1.5 text-center text-[10px] font-semibold ${
+                  active ? "bg-background text-foreground" : "bg-foreground text-background"
+                }`}
+              >
+                {badge}
+              </span>
+            )}
           </Link>
         );
       })}
@@ -82,6 +102,48 @@ function AuthLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { perfil, loading: perfilLoading, esAdmin } = useMiPerfil();
   const pausado = !esAdmin && perfil?.estado === "pausado";
+  const [marcaNombre, setMarcaNombre] = useState<string | null>(null);
+  const [marcaLogo, setMarcaLogo] = useState<string | null>(null);
+  const [badges, setBadges] = useState<Record<string, number>>({});
+
+  // Marca propia del cliente (white-label). Se lee aparte para NO tocar la consulta del perfil.
+  useEffect(() => {
+    if (esAdmin || !perfil?.profesional_id) return;
+    supabase
+      .from("profesionales")
+      .select("marca_nombre, marca_logo_url")
+      .eq("id", perfil.profesional_id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        setMarcaNombre((data.marca_nombre as string) || null);
+        setMarcaLogo((data.marca_logo_url as string) || null);
+      });
+  }, [esAdmin, perfil?.profesional_id]);
+
+  // Avisos: leads nuevos (24h) en CRM y conversaciones que estás atendiendo a mano en Chats.
+  useEffect(() => {
+    if (esAdmin || !perfil?.profesional_id) return;
+    let activo = true;
+    async function cargar() {
+      const desde = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const [nuevos, atender] = await Promise.all([
+        supabase.from("leads").select("id", { count: "exact", head: true }).gte("created_at", desde),
+        supabase
+          .from("conversaciones")
+          .select("id", { count: "exact", head: true })
+          .eq("bot_activo", false)
+          .eq("estado", "abierta"),
+      ]);
+      if (activo) setBadges({ "/crm": nuevos.count ?? 0, "/chats": atender.count ?? 0 });
+    }
+    cargar();
+    const t = setInterval(cargar, 30000);
+    return () => {
+      activo = false;
+      clearInterval(t);
+    };
+  }, [esAdmin, perfil?.profesional_id]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -145,23 +207,31 @@ function AuthLayout() {
   const principal = items.filter((i) => i.seccion === "principal");
   const admin = items.filter((i) => i.seccion === "admin");
 
+  const dispNombre = esAdmin ? MARCA : marcaNombre || MARCA;
+  const dispInicial = (dispNombre.charAt(0) || MARCA_INICIAL).toUpperCase();
+  const dispLogo = esAdmin ? null : marcaLogo;
+
   return (
     <div className="min-h-screen flex bg-muted/30">
       <aside className="w-64 shrink-0 border-r bg-sidebar flex flex-col">
         <div className="flex items-center gap-2.5 h-16 px-5 border-b">
-          <div className="h-8 w-8 rounded-lg bg-foreground text-background flex items-center justify-center text-sm font-bold">
-            {MARCA_INICIAL}
-          </div>
+          {dispLogo ? (
+            <img src={dispLogo} alt={dispNombre} className="h-8 w-8 rounded-lg object-cover" />
+          ) : (
+            <div className="h-8 w-8 rounded-lg bg-foreground text-background flex items-center justify-center text-sm font-bold">
+              {dispInicial}
+            </div>
+          )}
           <div className="min-w-0">
-            <p className="text-sm font-semibold tracking-tight leading-none truncate">{MARCA}</p>
+            <p className="text-sm font-semibold tracking-tight leading-none truncate">{dispNombre}</p>
             <p className="text-[11px] text-muted-foreground mt-1 truncate">
               {esAdmin ? "Administrador" : "Mi panel"}
             </p>
           </div>
         </div>
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
-          <NavGroup items={principal} label="Principal" pathname={pathname} />
-          <NavGroup items={admin} label="Administración" pathname={pathname} />
+          <NavGroup items={principal} label="Principal" pathname={pathname} badges={badges} />
+          <NavGroup items={admin} label="Administración" pathname={pathname} badges={badges} />
         </nav>
         <div className="border-t p-3">
           <div className="flex items-center gap-2.5 px-2 py-1.5 mb-1">
