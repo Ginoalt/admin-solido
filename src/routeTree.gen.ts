@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedResumenRouteImport } from './routes/_authenticated.resumen'
 import { Route as AuthenticatedProductosRouteImport } from './routes/_authenticated.productos'
 import { Route as AuthenticatedInicioRouteImport } from './routes/_authenticated.inicio'
+import { Route as AuthenticatedEquipoRouteImport } from './routes/_authenticated.equipo'
 import { Route as AuthenticatedCrmRouteImport } from './routes/_authenticated.crm'
 import { Route as AuthenticatedConfiguracionRouteImport } from './routes/_authenticated.configuracion'
 import { Route as AuthenticatedClientesRouteImport } from './routes/_authenticated.clientes'
@@ -50,6 +51,11 @@ const AuthenticatedProductosRoute = AuthenticatedProductosRouteImport.update({
 const AuthenticatedInicioRoute = AuthenticatedInicioRouteImport.update({
   id: '/inicio',
   path: '/inicio',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedEquipoRoute = AuthenticatedEquipoRouteImport.update({
+  id: '/equipo',
+  path: '/equipo',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedCrmRoute = AuthenticatedCrmRouteImport.update({
@@ -101,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/clientes': typeof AuthenticatedClientesRoute
   '/configuracion': typeof AuthenticatedConfiguracionRoute
   '/crm': typeof AuthenticatedCrmRoute
+  '/equipo': typeof AuthenticatedEquipoRoute
   '/inicio': typeof AuthenticatedInicioRoute
   '/productos': typeof AuthenticatedProductosRoute
   '/resumen': typeof AuthenticatedResumenRoute
@@ -115,6 +122,7 @@ export interface FileRoutesByTo {
   '/clientes': typeof AuthenticatedClientesRoute
   '/configuracion': typeof AuthenticatedConfiguracionRoute
   '/crm': typeof AuthenticatedCrmRoute
+  '/equipo': typeof AuthenticatedEquipoRoute
   '/inicio': typeof AuthenticatedInicioRoute
   '/productos': typeof AuthenticatedProductosRoute
   '/resumen': typeof AuthenticatedResumenRoute
@@ -131,6 +139,7 @@ export interface FileRoutesById {
   '/_authenticated/clientes': typeof AuthenticatedClientesRoute
   '/_authenticated/configuracion': typeof AuthenticatedConfiguracionRoute
   '/_authenticated/crm': typeof AuthenticatedCrmRoute
+  '/_authenticated/equipo': typeof AuthenticatedEquipoRoute
   '/_authenticated/inicio': typeof AuthenticatedInicioRoute
   '/_authenticated/productos': typeof AuthenticatedProductosRoute
   '/_authenticated/resumen': typeof AuthenticatedResumenRoute
@@ -147,6 +156,7 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/configuracion'
     | '/crm'
+    | '/equipo'
     | '/inicio'
     | '/productos'
     | '/resumen'
@@ -161,6 +171,7 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/configuracion'
     | '/crm'
+    | '/equipo'
     | '/inicio'
     | '/productos'
     | '/resumen'
@@ -176,6 +187,7 @@ export interface FileRouteTypes {
     | '/_authenticated/clientes'
     | '/_authenticated/configuracion'
     | '/_authenticated/crm'
+    | '/_authenticated/equipo'
     | '/_authenticated/inicio'
     | '/_authenticated/productos'
     | '/_authenticated/resumen'
@@ -229,6 +241,13 @@ declare module '@tanstack/react-router' {
       path: '/inicio'
       fullPath: '/inicio'
       preLoaderRoute: typeof AuthenticatedInicioRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/equipo': {
+      id: '/_authenticated/equipo'
+      path: '/equipo'
+      fullPath: '/equipo'
+      preLoaderRoute: typeof AuthenticatedEquipoRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/crm': {
@@ -291,6 +310,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedClientesRoute: typeof AuthenticatedClientesRoute
   AuthenticatedConfiguracionRoute: typeof AuthenticatedConfiguracionRoute
   AuthenticatedCrmRoute: typeof AuthenticatedCrmRoute
+  AuthenticatedEquipoRoute: typeof AuthenticatedEquipoRoute
   AuthenticatedInicioRoute: typeof AuthenticatedInicioRoute
   AuthenticatedProductosRoute: typeof AuthenticatedProductosRoute
   AuthenticatedResumenRoute: typeof AuthenticatedResumenRoute
@@ -304,6 +324,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedClientesRoute: AuthenticatedClientesRoute,
   AuthenticatedConfiguracionRoute: AuthenticatedConfiguracionRoute,
   AuthenticatedCrmRoute: AuthenticatedCrmRoute,
+  AuthenticatedEquipoRoute: AuthenticatedEquipoRoute,
   AuthenticatedInicioRoute: AuthenticatedInicioRoute,
   AuthenticatedProductosRoute: AuthenticatedProductosRoute,
   AuthenticatedResumenRoute: AuthenticatedResumenRoute,
