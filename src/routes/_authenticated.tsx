@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useMiPerfil, clearPerfilCache } from "@/lib/perfil";
 import { MARCA, MARCA_INICIAL } from "@/lib/brand";
-import { LayoutDashboard, TrendingUp, Users, Workflow, CalendarDays, MessageSquare, Settings, LogOut, Zap, Package, UsersRound } from "lucide-react";
+import { LayoutDashboard, TrendingUp, Users, Workflow, CalendarDays, MessageSquare, Settings, LogOut, Zap, Package, UsersRound, BarChart3, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -30,6 +30,8 @@ const nav: NavItem[] = [
   { to: "/automatizaciones", label: "Automatizaciones", icon: Zap, adminOnly: false, modulo: "automatizaciones", premium: true, seccion: "principal" },
   { to: "/productos", label: "Productos", icon: Package, adminOnly: false, modulo: "productos", premium: true, seccion: "principal" },
   { to: "/equipo", label: "Equipo", icon: UsersRound, adminOnly: false, modulo: "equipo", premium: true, seccion: "principal" },
+  { to: "/reportes", label: "Reportes", icon: BarChart3, adminOnly: false, modulo: "reportes", premium: true, seccion: "principal" },
+  { to: "/pagos", label: "Pagos", icon: DollarSign, adminOnly: false, modulo: "pagos", premium: true, seccion: "principal" },
   { to: "/clientes", label: "Clientes", icon: Users, adminOnly: true, seccion: "admin" },
   { to: "/configuracion", label: "Configuración", icon: Settings, adminOnly: true, seccion: "admin" },
 ];

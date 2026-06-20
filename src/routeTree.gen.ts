@@ -13,7 +13,9 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedResumenRouteImport } from './routes/_authenticated.resumen'
+import { Route as AuthenticatedReportesRouteImport } from './routes/_authenticated.reportes'
 import { Route as AuthenticatedProductosRouteImport } from './routes/_authenticated.productos'
+import { Route as AuthenticatedPagosRouteImport } from './routes/_authenticated.pagos'
 import { Route as AuthenticatedInicioRouteImport } from './routes/_authenticated.inicio'
 import { Route as AuthenticatedEquipoRouteImport } from './routes/_authenticated.equipo'
 import { Route as AuthenticatedCrmRouteImport } from './routes/_authenticated.crm'
@@ -43,9 +45,19 @@ const AuthenticatedResumenRoute = AuthenticatedResumenRouteImport.update({
   path: '/resumen',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedReportesRoute = AuthenticatedReportesRouteImport.update({
+  id: '/reportes',
+  path: '/reportes',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedProductosRoute = AuthenticatedProductosRouteImport.update({
   id: '/productos',
   path: '/productos',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedPagosRoute = AuthenticatedPagosRouteImport.update({
+  id: '/pagos',
+  path: '/pagos',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedInicioRoute = AuthenticatedInicioRouteImport.update({
@@ -109,7 +121,9 @@ export interface FileRoutesByFullPath {
   '/crm': typeof AuthenticatedCrmRoute
   '/equipo': typeof AuthenticatedEquipoRoute
   '/inicio': typeof AuthenticatedInicioRoute
+  '/pagos': typeof AuthenticatedPagosRoute
   '/productos': typeof AuthenticatedProductosRoute
+  '/reportes': typeof AuthenticatedReportesRoute
   '/resumen': typeof AuthenticatedResumenRoute
 }
 export interface FileRoutesByTo {
@@ -124,7 +138,9 @@ export interface FileRoutesByTo {
   '/crm': typeof AuthenticatedCrmRoute
   '/equipo': typeof AuthenticatedEquipoRoute
   '/inicio': typeof AuthenticatedInicioRoute
+  '/pagos': typeof AuthenticatedPagosRoute
   '/productos': typeof AuthenticatedProductosRoute
+  '/reportes': typeof AuthenticatedReportesRoute
   '/resumen': typeof AuthenticatedResumenRoute
 }
 export interface FileRoutesById {
@@ -141,7 +157,9 @@ export interface FileRoutesById {
   '/_authenticated/crm': typeof AuthenticatedCrmRoute
   '/_authenticated/equipo': typeof AuthenticatedEquipoRoute
   '/_authenticated/inicio': typeof AuthenticatedInicioRoute
+  '/_authenticated/pagos': typeof AuthenticatedPagosRoute
   '/_authenticated/productos': typeof AuthenticatedProductosRoute
+  '/_authenticated/reportes': typeof AuthenticatedReportesRoute
   '/_authenticated/resumen': typeof AuthenticatedResumenRoute
 }
 export interface FileRouteTypes {
@@ -158,7 +176,9 @@ export interface FileRouteTypes {
     | '/crm'
     | '/equipo'
     | '/inicio'
+    | '/pagos'
     | '/productos'
+    | '/reportes'
     | '/resumen'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -173,7 +193,9 @@ export interface FileRouteTypes {
     | '/crm'
     | '/equipo'
     | '/inicio'
+    | '/pagos'
     | '/productos'
+    | '/reportes'
     | '/resumen'
   id:
     | '__root__'
@@ -189,7 +211,9 @@ export interface FileRouteTypes {
     | '/_authenticated/crm'
     | '/_authenticated/equipo'
     | '/_authenticated/inicio'
+    | '/_authenticated/pagos'
     | '/_authenticated/productos'
+    | '/_authenticated/reportes'
     | '/_authenticated/resumen'
   fileRoutesById: FileRoutesById
 }
@@ -229,11 +253,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedResumenRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/reportes': {
+      id: '/_authenticated/reportes'
+      path: '/reportes'
+      fullPath: '/reportes'
+      preLoaderRoute: typeof AuthenticatedReportesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/productos': {
       id: '/_authenticated/productos'
       path: '/productos'
       fullPath: '/productos'
       preLoaderRoute: typeof AuthenticatedProductosRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/pagos': {
+      id: '/_authenticated/pagos'
+      path: '/pagos'
+      fullPath: '/pagos'
+      preLoaderRoute: typeof AuthenticatedPagosRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/inicio': {
@@ -312,7 +350,9 @@ interface AuthenticatedRouteChildren {
   AuthenticatedCrmRoute: typeof AuthenticatedCrmRoute
   AuthenticatedEquipoRoute: typeof AuthenticatedEquipoRoute
   AuthenticatedInicioRoute: typeof AuthenticatedInicioRoute
+  AuthenticatedPagosRoute: typeof AuthenticatedPagosRoute
   AuthenticatedProductosRoute: typeof AuthenticatedProductosRoute
+  AuthenticatedReportesRoute: typeof AuthenticatedReportesRoute
   AuthenticatedResumenRoute: typeof AuthenticatedResumenRoute
 }
 
@@ -326,7 +366,9 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedCrmRoute: AuthenticatedCrmRoute,
   AuthenticatedEquipoRoute: AuthenticatedEquipoRoute,
   AuthenticatedInicioRoute: AuthenticatedInicioRoute,
+  AuthenticatedPagosRoute: AuthenticatedPagosRoute,
   AuthenticatedProductosRoute: AuthenticatedProductosRoute,
+  AuthenticatedReportesRoute: AuthenticatedReportesRoute,
   AuthenticatedResumenRoute: AuthenticatedResumenRoute,
 }
 
