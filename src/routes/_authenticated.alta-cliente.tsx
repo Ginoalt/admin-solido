@@ -430,6 +430,32 @@ const AUTOMATIZACION_RUBRO: Record<string, { nombre: string; tarea_titulo: strin
   otro: { nombre: "Seguir a cada lead nuevo", tarea_titulo: "Contactar al lead", tarea_dias: 1 },
 };
 
+// Respuestas rápidas que se siembran en la Bandeja por rubro (el cliente las edita después).
+const RESPUESTAS_RUBRO: Record<string, string[]> = {
+  abogado: ["Hola, gracias por escribir. Contame brevemente tu caso.", "¿Coordinamos una consulta con un abogado?", "Los honorarios los vemos según el caso, sin compromiso."],
+  contador: ["Hola, ¿en qué te ayudamos? (monotributo, impuestos, sueldos)", "¿Coordinamos una reunión para asesorarte?", "Te paso una propuesta sin compromiso."],
+  medico: ["Hola 👋 ¿Querés agendar una consulta?", "¿Con qué obra social trabajás?", "Te confirmo los horarios disponibles."],
+  dentista: ["Hola 👋 ¿Querés reservar un turno?", "¿Qué tratamiento estás necesitando?", "Te confirmo obras sociales y precios."],
+  psicologo: ["Hola, gracias por escribir. ¿Querés coordinar una primera sesión?", "Atendemos presencial y online, ¿qué preferís?", "Te confirmo honorarios y disponibilidad."],
+  nutricionista: ["Hola 👋 ¿Cuál es tu objetivo? (bajar de peso, salud, deportivo)", "¿Coordinamos una consulta?", "Te confirmo el plan y los horarios."],
+  estetica: ["Hola 👋 ¿Qué tratamiento te interesa?", "¿Querés que te reserve un turno?", "Te paso precios y duración del tratamiento."],
+  peluqueria: ["Hola 👋 ¿Querés reservar un turno?", "¿Qué servicio buscás? (corte, color, barba)", "Te confirmo disponibilidad y precio."],
+  veterinaria: ["Hola 👋 ¿Cómo podemos ayudar a tu mascota?", "¿Querés que te agende un turno?", "Para urgencias, llamanos directo."],
+  inmobiliaria: ["Hola 👋 ¿Qué propiedad estás buscando?", "¿Coordinamos una visita?", "Contame zona y presupuesto y te paso opciones."],
+  constructora: ["Hola 👋 Contanos qué obra o reforma tenés en mente.", "¿Coordinamos una visita para presupuestar?", "Te pasamos un presupuesto sin compromiso."],
+  hogar: ["Hola 👋 ¿Qué necesitás resolver?", "Contame la zona y te paso un presupuesto.", "¿Coordinamos una visita?"],
+  taller: ["Hola 👋 ¿Qué necesita tu vehículo?", "Pasame marca, modelo y el problema.", "Te paso un presupuesto y coordinamos turno."],
+  automotriz: ["Hola 👋 ¿Qué vehículo estás buscando?", "¿Querés coordinar un test drive?", "Te paso info de financiación y planes."],
+  gimnasio: ["¡Hola! 👋 ¿Querés info de los planes?", "¿Coordinamos una clase de prueba?", "Te paso horarios y precios."],
+  academia: ["¡Hola! 👋 ¿Qué curso te interesa?", "¿Coordinamos una clase de prueba?", "Te paso modalidad, horarios y precios."],
+  escuela: ["Hola 👋 Gracias por tu interés. ¿Querés info de vacantes?", "¿Coordinamos una visita o entrevista?", "Te confirmo aranceles y requisitos."],
+  restaurante: ["¡Hola! 👋 ¿Querés reservar una mesa?", "Decime día, horario y cuántas personas.", "Te confirmo la reserva."],
+  turismo: ["¡Hola! 👋 ¿A dónde querés viajar?", "Contame destino y fechas y te armo una cotización.", "Te paso opciones y precios."],
+  seguros: ["Hola 👋 ¿Qué seguro estás necesitando?", "Pasame algunos datos y te cotizo.", "Te paso la cotización sin compromiso."],
+  comercio: ["¡Hola! 👋 ¿Qué producto estás buscando?", "Te paso precio y formas de pago.", "¿Coordinamos el envío o lo retirás?"],
+  otro: ["¡Hola! 👋 ¿En qué te puedo ayudar?", "Te paso la info y coordinamos.", "¿Querés que te agende?"],
+};
+
 function tipoDeEtapa(nombre: string): string {
   const n = nombre.toLowerCase();
   if (
@@ -581,6 +607,12 @@ function AltaClientePage() {
         tarea_dias: auto.tarea_dias,
         activa: true,
       });
+    }
+    const respuestas = RESPUESTAS_RUBRO[rubro];
+    if (respuestas && respuestas.length > 0) {
+      await supabase
+        .from("respuestas_rapidas")
+        .insert(respuestas.map((texto, i) => ({ profesional_id: pid, texto, orden: i })));
     }
 
     setSaving(false);

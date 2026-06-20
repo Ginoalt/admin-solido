@@ -112,6 +112,7 @@ function ConfiguracionPage() {
       {selId && <CanalCard key={`canal-${selId}`} profesionalId={selId} />}
       {selId && <TypebotCard key={`typebot-${selId}`} profesionalId={selId} />}
       {selId && <BotCard key={`bot-${selId}`} profesionalId={selId} />}
+      {selId && <RespuestasCard key={`resp-${selId}`} profesionalId={selId} />}
       {selId && <CamposCard key={`campos-${selId}`} profesionalId={selId} />}
       {selId && <EtapasCard key={`etapas-${selId}`} profesionalId={selId} />}
       {selId && <ConocimientoCard key={`conoc-${selId}`} profesionalId={selId} />}
@@ -408,6 +409,101 @@ function slugify(s: string): string {
     .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
+}
+
+type Respuesta = { id: string; texto: string; orden: number };
+
+function RespuestasCard({ profesionalId }: { profesionalId: string }) {
+  const [items, setItems] = useState<Respuesta[]>([]);
+  const [texto, setTexto] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function load() {
+    const { data } = await supabase
+      .from("respuestas_rapidas")
+      .select("id, texto, orden")
+      .eq("profesional_id", profesionalId)
+      .order("orden", { ascending: true });
+    setItems((data ?? []) as Respuesta[]);
+  }
+
+  useEffect(() => {
+    load();
+  }, [profesionalId]);
+
+  async function agregar(e: React.FormEvent) {
+    e.preventDefault();
+    if (!texto.trim()) {
+      setErr("Escribí la respuesta.");
+      return;
+    }
+    setSaving(true);
+    setErr(null);
+    const orden = items.reduce((m, r) => Math.max(m, r.orden), -1) + 1;
+    const { error } = await supabase
+      .from("respuestas_rapidas")
+      .insert({ profesional_id: profesionalId, texto: texto.trim(), orden });
+    setSaving(false);
+    if (error) {
+      setErr(error.message);
+      return;
+    }
+    setTexto("");
+    load();
+  }
+
+  async function borrar(id: string) {
+    await supabase.from("respuestas_rapidas").delete().eq("id", id);
+    setItems((prev) => prev.filter((r) => r.id !== id));
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Respuestas rápidas</CardTitle>
+        <CardDescription>
+          Frases pre-armadas que aparecen en la Bandeja para contestar con un clic (cuando el bot está apagado).
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {items.length > 0 && (
+          <div className="space-y-2">
+            {items.map((r) => (
+              <div key={r.id} className="flex items-center justify-between gap-3 rounded-lg border p-2.5">
+                <span className="min-w-0 truncate text-sm">{r.texto}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0"
+                  onClick={() => borrar(r.id)}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+        <form onSubmit={agregar} className="flex items-end gap-2">
+          <div className="flex-1 space-y-2">
+            <Label htmlFor="resp-texto">Nueva respuesta</Label>
+            <Input
+              id="resp-texto"
+              value={texto}
+              onChange={(e) => setTexto(e.target.value)}
+              placeholder="Ej: Hola 👋 ¿Querés agendar un turno?"
+            />
+          </div>
+          <Button type="submit" disabled={saving}>
+            <Plus className="h-4 w-4" />
+            Agregar
+          </Button>
+        </form>
+        {err && <p className="text-sm text-destructive">{err}</p>}
+      </CardContent>
+    </Card>
+  );
 }
 
 function CamposCard({ profesionalId }: { profesionalId: string }) {
