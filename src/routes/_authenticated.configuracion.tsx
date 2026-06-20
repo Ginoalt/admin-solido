@@ -126,6 +126,8 @@ const MODULOS_CLIENTE: { key: string; label: string; premium: boolean }[] = [
   { key: "automatizaciones", label: "Automatizaciones", premium: true },
   { key: "productos", label: "Productos / Stock", premium: true },
   { key: "equipo", label: "Equipo / Comunicados", premium: true },
+  { key: "reportes", label: "Reportes Pro", premium: true },
+  { key: "pagos", label: "Pagos & Forecast", premium: true },
 ];
 
 function ModulosCard({ profesionalId }: { profesionalId: string }) {
