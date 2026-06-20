@@ -38,7 +38,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, ArrowUp, ArrowDown, Copy, Check } from "lucide-react";
+import { Plus, Trash2, ArrowUp, ArrowDown, Copy, Check, Zap, Package, UsersRound, BarChart3, DollarSign, ArrowUpRight } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/configuracion")({
   component: ConfiguracionPage,
@@ -118,16 +118,51 @@ function ConfiguracionPage() {
   );
 }
 
-const MODULOS_CLIENTE: { key: string; label: string; premium: boolean }[] = [
-  { key: "resumen", label: "Resumen del mes", premium: false },
-  { key: "crm", label: "CRM (embudo de leads)", premium: false },
-  { key: "chats", label: "Chats / Bandeja", premium: false },
-  { key: "agenda", label: "Agenda", premium: false },
-  { key: "automatizaciones", label: "Automatizaciones", premium: true },
-  { key: "productos", label: "Productos / Stock", premium: true },
-  { key: "equipo", label: "Equipo / Comunicados", premium: true },
-  { key: "reportes", label: "Reportes Pro", premium: true },
-  { key: "pagos", label: "Pagos & Forecast", premium: true },
+const MODULOS_CLIENTE = [
+  { key: "resumen", label: "Resumen del mes" },
+  { key: "crm", label: "CRM (embudo de leads)" },
+  { key: "chats", label: "Chats / Bandeja" },
+  { key: "agenda", label: "Agenda" },
+];
+
+// Módulos premium (telones para vender). Cada uno con qué hace, para qué cliente, y su ruta para probar.
+const COMPLEMENTOS: { key: string; label: string; descripcion: string; ruta: string; icon: typeof Zap }[] = [
+  {
+    key: "automatizaciones",
+    label: "Automatizaciones",
+    descripcion:
+      "Crea tareas de seguimiento solas (al entrar un lead o llegar a una etapa). Para que ningún lead quede sin atención.",
+    ruta: "/automatizaciones",
+    icon: Zap,
+  },
+  {
+    key: "productos",
+    label: "Productos / Stock",
+    descripcion: "Catálogo y control de inventario. Para comercios, tiendas y cualquiera que venda productos.",
+    ruta: "/productos",
+    icon: Package,
+  },
+  {
+    key: "equipo",
+    label: "Equipo / Comunicados",
+    descripcion: "Suma varias personas al workspace y un muro de avisos interno. Para clientes con equipo.",
+    ruta: "/equipo",
+    icon: UsersRound,
+  },
+  {
+    key: "reportes",
+    label: "Reportes Pro",
+    descripcion: "Métricas avanzadas y exportar a Excel. Para quien quiere medir sus números en serio.",
+    ruta: "/reportes",
+    icon: BarChart3,
+  },
+  {
+    key: "pagos",
+    label: "Pagos & Forecast",
+    descripcion: "Monto por lead y cuánta plata hay en el embudo. Para negocios enfocados en ventas.",
+    ruta: "/pagos",
+    icon: DollarSign,
+  },
 ];
 
 function ModulosCard({ profesionalId }: { profesionalId: string }) {
@@ -153,27 +188,60 @@ function ModulosCard({ profesionalId }: { profesionalId: string }) {
       <CardHeader>
         <CardTitle>Módulos del cliente</CardTitle>
         <CardDescription>
-          Prendé o apagá las secciones que ve este cliente. Lo apagado no le aparece en su menú
-          (el "telón"). Lo sensible (WhatsApp, IA) siempre lo manejás vos.
+          Prendé o apagá lo que ve este cliente. Lo apagado no le aparece en su menú (el "telón").
+          Los complementos se venden aparte: prendé el que el cliente necesite.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {MODULOS_CLIENTE.filter((m) => !m.premium).map((m) => (
-          <div key={m.key} className="flex items-center justify-between">
-            <span className="text-sm">{m.label}</span>
-            <Switch checked={modulos[m.key] !== false} onCheckedChange={(v) => toggle(m.key, v)} />
-          </div>
-        ))}
-        <div className="pt-3 mt-1 border-t">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70 mb-2">
-            Complementos (se venden aparte)
-          </p>
-          {MODULOS_CLIENTE.filter((m) => m.premium).map((m) => (
-            <div key={m.key} className="flex items-center justify-between py-1">
+      <CardContent className="space-y-5">
+        <div className="space-y-3">
+          {MODULOS_CLIENTE.map((m) => (
+            <div key={m.key} className="flex items-center justify-between">
               <span className="text-sm">{m.label}</span>
-              <Switch checked={modulos[m.key] === true} onCheckedChange={(v) => toggle(m.key, v)} />
+              <Switch checked={modulos[m.key] !== false} onCheckedChange={(v) => toggle(m.key, v)} />
             </div>
           ))}
+        </div>
+
+        <div className="space-y-2 border-t pt-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+            Complementos (módulos para vender)
+          </p>
+          {COMPLEMENTOS.map((m) => {
+            const Icon = m.icon;
+            const activo = modulos[m.key] === true;
+            return (
+              <div key={m.key} className="rounded-lg border p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center shrink-0">
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">{m.label}</p>
+                      <p className="text-xs text-muted-foreground">{m.descripcion}</p>
+                    </div>
+                  </div>
+                  <Switch checked={activo} onCheckedChange={(v) => toggle(m.key, v)} />
+                </div>
+                <div className="mt-2 pl-11 flex items-center gap-4">
+                  <span
+                    className={`text-[11px] ${activo ? "text-foreground font-medium" : "text-muted-foreground"}`}
+                  >
+                    {activo ? "Activo para este cliente" : "Apagado"}
+                  </span>
+                  <a
+                    href={`${m.ruta}?cliente=${profesionalId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] inline-flex items-center gap-1 text-foreground hover:underline"
+                  >
+                    Probar
+                    <ArrowUpRight className="h-3 w-3" />
+                  </a>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </CardContent>
     </Card>

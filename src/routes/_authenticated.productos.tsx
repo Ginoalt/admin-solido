@@ -69,6 +69,8 @@ function ProductosPage() {
       setLoading(false);
       return;
     }
+    const pre =
+      typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("cliente") : null;
     supabase
       .from("profesionales")
       .select("id, nombre")
@@ -76,7 +78,7 @@ function ProductosPage() {
       .then(({ data }) => {
         const list = (data ?? []) as Profesional[];
         setProfesionales(list);
-        if (list.length > 0) setSelId(list[0].id);
+        if (list.length > 0) setSelId(pre && list.some((p) => p.id === pre) ? pre : list[0].id);
         setLoading(false);
       });
   }, [esAdmin]);
