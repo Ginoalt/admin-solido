@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
   const { data: canal } = await admin
     .from("canales_whatsapp")
     .select(
-      "proveedor, phone_number_id, access_token, evolution_url, evolution_instance, evolution_api_key",
+      "proveedor, phone_number_id, access_token, evolution_url, evolution_instance, evolution_api_key, zapi_instance, zapi_token, zapi_client_token",
     )
     .eq("profesional_id", pid)
     .maybeSingle();
@@ -117,6 +117,9 @@ function canalConfigurado(canal: any): boolean {
   if (canal.proveedor === "evolution") {
     return !!(canal.evolution_url && canal.evolution_instance && canal.evolution_api_key);
   }
+  if (canal.proveedor === "zapi") {
+    return !!(canal.zapi_instance && canal.zapi_token);
+  }
   return !!(canal.phone_number_id && canal.access_token);
 }
 
@@ -125,7 +128,38 @@ async function enviarTexto(canal: any, to: string, texto: string): Promise<boole
   if (canal?.proveedor === "evolution") {
     return await enviarEvolution(canal, to, texto);
   }
+  if (canal?.proveedor === "zapi") {
+    return await enviarZapi(canal, to, texto);
+  }
   return await enviarMeta(canal?.phone_number_id, canal?.access_token, to, texto);
+}
+
+// Z-API: envia al numero con el 9; el Client-Token va como header de seguridad (si esta configurado).
+async function enviarZapi(canal: any, to: string, texto: string): Promise<boolean> {
+  const instancia = String(canal?.zapi_instance ?? "").trim();
+  const token = String(canal?.zapi_token ?? "").trim();
+  const clientToken = String(canal?.zapi_client_token ?? "").trim();
+  if (!instancia || !token) {
+    console.error("Z-API mal configurado (falta instancia o token).");
+    return false;
+  }
+  const phone = String(to).replace(/\D/g, "");
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  if (clientToken) headers["Client-Token"] = clientToken;
+  try {
+    const resp = await fetch(
+      `https://api.z-api.io/instances/${encodeURIComponent(instancia)}/token/${encodeURIComponent(token)}/send-text`,
+      { method: "POST", headers, body: JSON.stringify({ phone, message: texto }) },
+    );
+    if (!resp.ok) {
+      console.error(`Z-API send (phone ${phone}):`, await resp.text());
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error("Z-API send exception:", e);
+    return false;
+  }
 }
 
 async function enviarMeta(
