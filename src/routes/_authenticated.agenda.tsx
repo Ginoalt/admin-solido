@@ -63,11 +63,11 @@ const ESTADOS: Record<string, string> = {
 };
 
 const COLOR_ESTADO: Record<string, string> = {
-  agendada: "bg-blue-500",
-  confirmada: "bg-emerald-500",
-  atendida: "bg-green-600",
-  no_show: "bg-amber-500",
-  cancelada: "bg-rose-500",
+  agendada: "bg-muted-foreground/40",
+  confirmada: "bg-foreground",
+  atendida: "bg-foreground",
+  no_show: "bg-destructive",
+  cancelada: "bg-destructive",
 };
 
 function formatFecha(iso: string): string {

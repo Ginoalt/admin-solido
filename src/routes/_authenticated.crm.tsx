@@ -126,9 +126,9 @@ function parseCSV(texto: string): string[][] {
 
 // Color de cada etapa según su tipo (para el encabezado del Kanban)
 const COLOR_ETAPA: Record<string, { dot: string; pill: string }> = {
-  ganado: { dot: "bg-emerald-500", pill: "bg-emerald-100 text-emerald-700" },
-  perdido: { dot: "bg-rose-500", pill: "bg-rose-100 text-rose-700" },
-  normal: { dot: "bg-blue-500", pill: "bg-blue-100 text-blue-700" },
+  ganado: { dot: "bg-foreground", pill: "bg-foreground/10 text-foreground" },
+  perdido: { dot: "bg-destructive", pill: "bg-destructive/10 text-destructive" },
+  normal: { dot: "bg-muted-foreground/40", pill: "bg-muted text-muted-foreground" },
 };
 
 function CrmPage() {
@@ -492,7 +492,7 @@ function CrmPage() {
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className="mt-2 inline-flex items-center gap-1 text-xs text-emerald-600 hover:underline"
+                          className="mt-2 inline-flex items-center gap-1 text-xs text-foreground hover:underline"
                         >
                           <MessageCircle className="h-3.5 w-3.5" />
                           WhatsApp
@@ -752,7 +752,7 @@ function FichaLeadDialog({
             href={waLink(telefono, nombre)!}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
+            className="inline-flex items-center gap-2 rounded-md border border-border bg-secondary px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
           >
             <MessageCircle className="h-4 w-4" />
             Abrir WhatsApp

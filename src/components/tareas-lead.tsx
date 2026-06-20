@@ -71,7 +71,7 @@ export function TareasLead({
                 type="button"
                 onClick={() => toggle(t)}
                 className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
-                  t.hecha ? "border-emerald-500 bg-emerald-500 text-white" : "border-input"
+                  t.hecha ? "border-foreground bg-foreground text-background" : "border-input"
                 }`}
               >
                 {t.hecha && <Check className="h-3.5 w-3.5" />}

@@ -88,7 +88,7 @@ function Delta({ valor, sufijo }: { valor: number; sufijo: string }) {
   return (
     <span
       className={`inline-flex items-center gap-1 text-xs ${
-        positivo ? "text-emerald-600" : "text-rose-600"
+        positivo ? "text-foreground" : "text-destructive"
       }`}
     >
       {positivo ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
