@@ -753,6 +753,9 @@ function CanalCard({ profesionalId }: { profesionalId: string }) {
   const [evolutionUrl, setEvolutionUrl] = useState("");
   const [evolutionInstance, setEvolutionInstance] = useState("");
   const [evolutionApiKey, setEvolutionApiKey] = useState("");
+  const [zapiInstance, setZapiInstance] = useState("");
+  const [zapiToken, setZapiToken] = useState("");
+  const [zapiClientToken, setZapiClientToken] = useState("");
   const [estado, setEstado] = useState("prueba");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -763,7 +766,7 @@ function CanalCard({ profesionalId }: { profesionalId: string }) {
     supabase
       .from("canales_whatsapp")
       .select(
-        "id, proveedor, numero, phone_number_id, waba_id, access_token, evolution_url, evolution_instance, evolution_api_key, estado",
+        "id, proveedor, numero, phone_number_id, waba_id, access_token, evolution_url, evolution_instance, evolution_api_key, zapi_instance, zapi_token, zapi_client_token, estado",
       )
       .eq("profesional_id", profesionalId)
       .limit(1)
@@ -779,6 +782,9 @@ function CanalCard({ profesionalId }: { profesionalId: string }) {
           setEvolutionUrl((data.evolution_url as string) ?? "");
           setEvolutionInstance((data.evolution_instance as string) ?? "");
           setEvolutionApiKey((data.evolution_api_key as string) ?? "");
+          setZapiInstance((data.zapi_instance as string) ?? "");
+          setZapiToken((data.zapi_token as string) ?? "");
+          setZapiClientToken((data.zapi_client_token as string) ?? "");
           setEstado((data.estado as string) ?? "prueba");
         }
       });
@@ -800,6 +806,11 @@ function CanalCard({ profesionalId }: { profesionalId: string }) {
       setErr("Para Evolution: completá la URL del servidor, la instancia y la API key.");
       return;
     }
+    if (proveedor === "zapi" && (!zapiInstance.trim() || !zapiToken.trim())) {
+      setSaving(false);
+      setErr("Para Z-API: completá la instancia y el token.");
+      return;
+    }
     const payload = {
       profesional_id: profesionalId,
       proveedor,
@@ -810,6 +821,9 @@ function CanalCard({ profesionalId }: { profesionalId: string }) {
       evolution_url: evolutionUrl,
       evolution_instance: evolutionInstance,
       evolution_api_key: evolutionApiKey,
+      zapi_instance: zapiInstance,
+      zapi_token: zapiToken,
+      zapi_client_token: zapiClientToken,
       estado,
     };
     let error = null;
@@ -825,7 +839,9 @@ function CanalCard({ profesionalId }: { profesionalId: string }) {
     else setMsg("Guardado");
   }
 
+  const esMeta = proveedor === "meta";
   const esEvolution = proveedor === "evolution";
+  const esZapi = proveedor === "zapi";
 
   return (
     <Card>
@@ -834,7 +850,9 @@ function CanalCard({ profesionalId }: { profesionalId: string }) {
         <CardDescription>
           {esEvolution
             ? "Conexión por Evolution API (servidor propio, número con QR). No oficial."
-            : "Conexión por Meta Cloud API (oficial). En Fase 1 va el número de prueba."}
+            : esZapi
+              ? "Conexión por Z-API (hosteado, número con QR). No oficial; pagás por número."
+              : "Conexión por Meta Cloud API (oficial). En Fase 1 va el número de prueba."}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -848,6 +866,7 @@ function CanalCard({ profesionalId }: { profesionalId: string }) {
               <SelectContent>
                 <SelectItem value="meta">Meta Cloud API (oficial)</SelectItem>
                 <SelectItem value="evolution">Evolution API (servidor propio)</SelectItem>
+                <SelectItem value="zapi">Z-API (hosteado, pagás por número)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -857,7 +876,7 @@ function CanalCard({ profesionalId }: { profesionalId: string }) {
             <Input id="numero" value={numero} onChange={(e) => setNumero(e.target.value)} placeholder="+54 9 11 ..." />
           </div>
 
-          {!esEvolution && (
+          {esMeta && (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -918,6 +937,49 @@ function CanalCard({ profesionalId }: { profesionalId: string }) {
                 etiqueta="Webhook para pegar en Evolution (evento messages.upsert)"
                 valor={WSP_WEBHOOK_URL}
                 cual="evo-webhook"
+                copiado={copiado}
+                onCopiar={copiar}
+              />
+            </>
+          )}
+
+          {esZapi && (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="zapi-instance">ID de instancia (Z-API)</Label>
+                  <Input
+                    id="zapi-instance"
+                    value={zapiInstance}
+                    onChange={(e) => setZapiInstance(e.target.value)}
+                    placeholder="Lo da el panel de Z-API"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="zapi-token">Token de instancia</Label>
+                  <Input
+                    id="zapi-token"
+                    type="password"
+                    value={zapiToken}
+                    onChange={(e) => setZapiToken(e.target.value)}
+                    placeholder="Se guarda en tu base (protegido por RLS)"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="zapi-client">Client-Token (seguridad de la cuenta)</Label>
+                <Input
+                  id="zapi-client"
+                  type="password"
+                  value={zapiClientToken}
+                  onChange={(e) => setZapiClientToken(e.target.value)}
+                  placeholder="Recomendado — lo da el panel de Z-API (Seguridad)"
+                />
+              </div>
+              <FilaCopiar
+                etiqueta="Webhook para pegar en Z-API (al recibir / on-message-received)"
+                valor={WSP_WEBHOOK_URL}
+                cual="zapi-webhook"
                 copiado={copiado}
                 onCopiar={copiar}
               />

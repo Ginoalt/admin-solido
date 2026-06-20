@@ -21,7 +21,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const GRAPH = "https://graph.facebook.com/v21.0";
 // Campos del canal que necesitamos para guardar Y para responder por cualquier proveedor.
 const CAMPOS_CANAL =
-  "profesional_id, proveedor, phone_number_id, access_token, evolution_url, evolution_instance, evolution_api_key";
+  "profesional_id, proveedor, phone_number_id, access_token, evolution_url, evolution_instance, evolution_api_key, zapi_instance, zapi_token, zapi_client_token";
 
 Deno.serve(async (req) => {
   const url = new URL(req.url);
@@ -60,12 +60,38 @@ async function procesar(payload: any) {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  // Meta trae `entry` (array). Evolution trae `event`/`instance`. Asi distinguimos el formato.
+  // Distinguimos el proveedor por la forma del payload:
+  //   Meta -> `entry` (array). Evolution -> `event`/`instance`. Z-API -> `instanceId`.
   if (Array.isArray(payload?.entry)) {
     await procesarMeta(admin, payload);
   } else if (payload?.event || payload?.instance) {
     await procesarEvolution(admin, payload);
+  } else if (payload?.instanceId) {
+    await procesarZapi(admin, payload);
   }
+}
+
+// ---- Z-API (no oficial, hosteado) ----------------------------------------------------
+// Webhook "al recibir" (ReceivedCallback). Formato tipico de un texto:
+//   { instanceId, phone, fromMe, isGroup, type:"ReceivedCallback", text:{ message }, senderName }
+async function procesarZapi(admin: any, payload: any) {
+  if (payload?.fromMe) return; // eco de lo que mandamos nosotros
+  if (payload?.isGroup) return; // ignoramos grupos
+  const instancia = payload?.instanceId;
+  if (!instancia) return;
+
+  const { data: canal } = await admin
+    .from("canales_whatsapp")
+    .select(CAMPOS_CANAL)
+    .eq("zapi_instance", instancia)
+    .maybeSingle();
+  if (!canal?.profesional_id) return; // instancia no configurada
+
+  const desde = String(payload?.phone ?? "").replace(/\D/g, ""); // Z-API ya da el numero limpio (con el 9)
+  const texto = String(payload?.text?.message ?? "").trim(); // v1: solo texto
+  const nombreContacto = payload?.senderName ?? payload?.chatName ?? null;
+  if (!desde || !texto) return;
+  await manejarEntrante(admin, canal, desde, texto, nombreContacto);
 }
 
 // ---- META (Cloud API) ----------------------------------------------------------------
@@ -376,7 +402,39 @@ async function enviarTexto(canal: any, to: string, texto: string): Promise<boole
   if (canal?.proveedor === "evolution") {
     return await enviarEvolution(canal, to, texto);
   }
+  if (canal?.proveedor === "zapi") {
+    return await enviarZapi(canal, to, texto);
+  }
   return await enviarMeta(canal?.phone_number_id, canal?.access_token, to, texto);
+}
+
+// Z-API: se le envia al numero con el 9 (limpio). El Client-Token va como header de seguridad
+// (si el cliente lo configuro en el panel de Z-API).
+async function enviarZapi(canal: any, to: string, texto: string): Promise<boolean> {
+  const instancia = String(canal?.zapi_instance ?? "").trim();
+  const token = String(canal?.zapi_token ?? "").trim();
+  const clientToken = String(canal?.zapi_client_token ?? "").trim();
+  if (!instancia || !token) {
+    console.error("Z-API mal configurado (falta instancia o token).");
+    return false;
+  }
+  const phone = String(to).replace(/\D/g, "");
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  if (clientToken) headers["Client-Token"] = clientToken;
+  try {
+    const resp = await fetch(
+      `https://api.z-api.io/instances/${encodeURIComponent(instancia)}/token/${encodeURIComponent(token)}/send-text`,
+      { method: "POST", headers, body: JSON.stringify({ phone, message: texto }) },
+    );
+    if (!resp.ok) {
+      console.error(`Z-API send (phone ${phone}):`, await resp.text());
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error("Z-API send exception:", e);
+    return false;
+  }
 }
 
 async function enviarMeta(
@@ -455,6 +513,9 @@ function canalConfigurado(canal: any): boolean {
   if (!canal) return false;
   if (canal.proveedor === "evolution") {
     return !!(canal.evolution_url && canal.evolution_instance && canal.evolution_api_key);
+  }
+  if (canal.proveedor === "zapi") {
+    return !!(canal.zapi_instance && canal.zapi_token);
   }
   return !!(canal.phone_number_id && canal.access_token);
 }
