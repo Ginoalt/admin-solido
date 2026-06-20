@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, Link, useNavigate, useRouterState } from "@tan
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useMiPerfil, clearPerfilCache } from "@/lib/perfil";
+import { MARCA, MARCA_INICIAL } from "@/lib/brand";
 import { LayoutDashboard, TrendingUp, Users, Workflow, CalendarDays, MessageSquare, Settings, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -10,15 +11,53 @@ export const Route = createFileRoute("/_authenticated")({
   component: AuthLayout,
 });
 
-const nav = [
-  { to: "/inicio", label: "Inicio", icon: LayoutDashboard, adminOnly: false },
-  { to: "/resumen", label: "Resumen", icon: TrendingUp, adminOnly: false, modulo: "resumen" },
-  { to: "/clientes", label: "Clientes", icon: Users, adminOnly: true },
-  { to: "/crm", label: "CRM", icon: Workflow, adminOnly: false, modulo: "crm" },
-  { to: "/chats", label: "Chats", icon: MessageSquare, adminOnly: false, modulo: "chats" },
-  { to: "/agenda", label: "Agenda", icon: CalendarDays, adminOnly: false, modulo: "agenda" },
-  { to: "/configuracion", label: "Configuración", icon: Settings, adminOnly: true },
+type NavItem = {
+  to: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  adminOnly: boolean;
+  modulo?: string;
+  seccion: "principal" | "admin";
+};
+
+const nav: NavItem[] = [
+  { to: "/inicio", label: "Inicio", icon: LayoutDashboard, adminOnly: false, seccion: "principal" },
+  { to: "/crm", label: "CRM", icon: Workflow, adminOnly: false, modulo: "crm", seccion: "principal" },
+  { to: "/chats", label: "Chats", icon: MessageSquare, adminOnly: false, modulo: "chats", seccion: "principal" },
+  { to: "/agenda", label: "Agenda", icon: CalendarDays, adminOnly: false, modulo: "agenda", seccion: "principal" },
+  { to: "/resumen", label: "Resumen", icon: TrendingUp, adminOnly: false, modulo: "resumen", seccion: "principal" },
+  { to: "/clientes", label: "Clientes", icon: Users, adminOnly: true, seccion: "admin" },
+  { to: "/configuracion", label: "Configuración", icon: Settings, adminOnly: true, seccion: "admin" },
 ];
+
+function NavGroup({ items, label, pathname }: { items: NavItem[]; label: string; pathname: string }) {
+  if (items.length === 0) return null;
+  return (
+    <div className="space-y-1">
+      <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+        {label}
+      </p>
+      {items.map((item) => {
+        const Icon = item.icon;
+        const active = pathname.startsWith(item.to);
+        return (
+          <Link
+            key={item.to}
+            to={item.to}
+            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+              active
+                ? "bg-foreground text-background font-medium"
+                : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+            }`}
+          >
+            <Icon className="h-4 w-4 shrink-0" />
+            {item.label}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
 
 // Secciones que solo puede ver el admin (Gino). Si un cliente las pide, lo mandamos al inicio.
 const RUTAS_ADMIN = ["/clientes", "/configuracion", "/alta-cliente"];
@@ -95,36 +134,42 @@ function AuthLayout() {
     if (item.adminOnly) return false;
     return moduloActivo(perfil?.modulos, item.modulo);
   });
+  const principal = items.filter((i) => i.seccion === "principal");
+  const admin = items.filter((i) => i.seccion === "admin");
 
   return (
-    <div className="min-h-screen flex bg-muted/20">
-      <aside className="w-60 border-r bg-card flex flex-col">
-        <div className="px-5 py-5 border-b">
-          <h2 className="font-semibold tracking-tight">Panel</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {esAdmin ? "Administrador" : "Mi panel"}
-          </p>
+    <div className="min-h-screen flex bg-muted/30">
+      <aside className="w-64 shrink-0 border-r bg-sidebar flex flex-col">
+        <div className="flex items-center gap-2.5 h-16 px-5 border-b">
+          <div className="h-8 w-8 rounded-lg bg-foreground text-background flex items-center justify-center text-sm font-bold">
+            {MARCA_INICIAL}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold tracking-tight leading-none truncate">{MARCA}</p>
+            <p className="text-[11px] text-muted-foreground mt-1 truncate">
+              {esAdmin ? "Administrador" : "Mi panel"}
+            </p>
+          </div>
         </div>
-        <nav className="flex-1 p-3 space-y-1">
-          {items.map((item) => {
-            const Icon = item.icon;
-            const active = pathname.startsWith(item.to);
-            const base =
-              "flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors";
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={`${base} ${active ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
-              >
-                <Icon className="h-4 w-4" />
-                {item.label}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+          <NavGroup items={principal} label="Principal" pathname={pathname} />
+          <NavGroup items={admin} label="Administración" pathname={pathname} />
         </nav>
-        <div className="p-3 border-t">
-          <Button variant="ghost" size="sm" className="w-full justify-start" onClick={handleLogout}>
+        <div className="border-t p-3">
+          <div className="flex items-center gap-2.5 px-2 py-1.5 mb-1">
+            <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-xs font-semibold text-foreground">
+              {esAdmin ? "A" : "C"}
+            </div>
+            <span className="text-xs text-muted-foreground truncate">
+              {esAdmin ? "Administrador" : "Mi cuenta"}
+            </span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start text-muted-foreground"
+            onClick={handleLogout}
+          >
             <LogOut className="h-4 w-4" />
             Cerrar sesión
           </Button>
