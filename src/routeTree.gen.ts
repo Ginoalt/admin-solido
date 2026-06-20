@@ -18,6 +18,7 @@ import { Route as AuthenticatedCrmRouteImport } from './routes/_authenticated.cr
 import { Route as AuthenticatedConfiguracionRouteImport } from './routes/_authenticated.configuracion'
 import { Route as AuthenticatedClientesRouteImport } from './routes/_authenticated.clientes'
 import { Route as AuthenticatedChatsRouteImport } from './routes/_authenticated.chats'
+import { Route as AuthenticatedAutomatizacionesRouteImport } from './routes/_authenticated.automatizaciones'
 import { Route as AuthenticatedAltaClienteRouteImport } from './routes/_authenticated.alta-cliente'
 import { Route as AuthenticatedAgendaRouteImport } from './routes/_authenticated.agenda'
 
@@ -66,6 +67,12 @@ const AuthenticatedChatsRoute = AuthenticatedChatsRouteImport.update({
   path: '/chats',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedAutomatizacionesRoute =
+  AuthenticatedAutomatizacionesRouteImport.update({
+    id: '/automatizaciones',
+    path: '/automatizaciones',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAltaClienteRoute =
   AuthenticatedAltaClienteRouteImport.update({
     id: '/alta-cliente',
@@ -83,6 +90,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/agenda': typeof AuthenticatedAgendaRoute
   '/alta-cliente': typeof AuthenticatedAltaClienteRoute
+  '/automatizaciones': typeof AuthenticatedAutomatizacionesRoute
   '/chats': typeof AuthenticatedChatsRoute
   '/clientes': typeof AuthenticatedClientesRoute
   '/configuracion': typeof AuthenticatedConfiguracionRoute
@@ -95,6 +103,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/agenda': typeof AuthenticatedAgendaRoute
   '/alta-cliente': typeof AuthenticatedAltaClienteRoute
+  '/automatizaciones': typeof AuthenticatedAutomatizacionesRoute
   '/chats': typeof AuthenticatedChatsRoute
   '/clientes': typeof AuthenticatedClientesRoute
   '/configuracion': typeof AuthenticatedConfiguracionRoute
@@ -109,6 +118,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authenticated/agenda': typeof AuthenticatedAgendaRoute
   '/_authenticated/alta-cliente': typeof AuthenticatedAltaClienteRoute
+  '/_authenticated/automatizaciones': typeof AuthenticatedAutomatizacionesRoute
   '/_authenticated/chats': typeof AuthenticatedChatsRoute
   '/_authenticated/clientes': typeof AuthenticatedClientesRoute
   '/_authenticated/configuracion': typeof AuthenticatedConfiguracionRoute
@@ -123,6 +133,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/agenda'
     | '/alta-cliente'
+    | '/automatizaciones'
     | '/chats'
     | '/clientes'
     | '/configuracion'
@@ -135,6 +146,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/agenda'
     | '/alta-cliente'
+    | '/automatizaciones'
     | '/chats'
     | '/clientes'
     | '/configuracion'
@@ -148,6 +160,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_authenticated/agenda'
     | '/_authenticated/alta-cliente'
+    | '/_authenticated/automatizaciones'
     | '/_authenticated/chats'
     | '/_authenticated/clientes'
     | '/_authenticated/configuracion'
@@ -227,6 +240,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedChatsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/automatizaciones': {
+      id: '/_authenticated/automatizaciones'
+      path: '/automatizaciones'
+      fullPath: '/automatizaciones'
+      preLoaderRoute: typeof AuthenticatedAutomatizacionesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/alta-cliente': {
       id: '/_authenticated/alta-cliente'
       path: '/alta-cliente'
@@ -247,6 +267,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteChildren {
   AuthenticatedAgendaRoute: typeof AuthenticatedAgendaRoute
   AuthenticatedAltaClienteRoute: typeof AuthenticatedAltaClienteRoute
+  AuthenticatedAutomatizacionesRoute: typeof AuthenticatedAutomatizacionesRoute
   AuthenticatedChatsRoute: typeof AuthenticatedChatsRoute
   AuthenticatedClientesRoute: typeof AuthenticatedClientesRoute
   AuthenticatedConfiguracionRoute: typeof AuthenticatedConfiguracionRoute
@@ -258,6 +279,7 @@ interface AuthenticatedRouteChildren {
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAgendaRoute: AuthenticatedAgendaRoute,
   AuthenticatedAltaClienteRoute: AuthenticatedAltaClienteRoute,
+  AuthenticatedAutomatizacionesRoute: AuthenticatedAutomatizacionesRoute,
   AuthenticatedChatsRoute: AuthenticatedChatsRoute,
   AuthenticatedClientesRoute: AuthenticatedClientesRoute,
   AuthenticatedConfiguracionRoute: AuthenticatedConfiguracionRoute,

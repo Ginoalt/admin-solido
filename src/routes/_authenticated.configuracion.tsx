@@ -118,11 +118,12 @@ function ConfiguracionPage() {
   );
 }
 
-const MODULOS_CLIENTE = [
-  { key: "resumen", label: "Resumen del mes" },
-  { key: "crm", label: "CRM (embudo de leads)" },
-  { key: "chats", label: "Chats / Bandeja" },
-  { key: "agenda", label: "Agenda" },
+const MODULOS_CLIENTE: { key: string; label: string; premium: boolean }[] = [
+  { key: "resumen", label: "Resumen del mes", premium: false },
+  { key: "crm", label: "CRM (embudo de leads)", premium: false },
+  { key: "chats", label: "Chats / Bandeja", premium: false },
+  { key: "agenda", label: "Agenda", premium: false },
+  { key: "automatizaciones", label: "Automatizaciones", premium: true },
 ];
 
 function ModulosCard({ profesionalId }: { profesionalId: string }) {
@@ -153,12 +154,23 @@ function ModulosCard({ profesionalId }: { profesionalId: string }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {MODULOS_CLIENTE.map((m) => (
+        {MODULOS_CLIENTE.filter((m) => !m.premium).map((m) => (
           <div key={m.key} className="flex items-center justify-between">
             <span className="text-sm">{m.label}</span>
             <Switch checked={modulos[m.key] !== false} onCheckedChange={(v) => toggle(m.key, v)} />
           </div>
         ))}
+        <div className="pt-3 mt-1 border-t">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70 mb-2">
+            Complementos (se venden aparte)
+          </p>
+          {MODULOS_CLIENTE.filter((m) => m.premium).map((m) => (
+            <div key={m.key} className="flex items-center justify-between py-1">
+              <span className="text-sm">{m.label}</span>
+              <Switch checked={modulos[m.key] === true} onCheckedChange={(v) => toggle(m.key, v)} />
+            </div>
+          ))}
+        </div>
       </CardContent>
     </Card>
   );
