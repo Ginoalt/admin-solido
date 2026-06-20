@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useMiPerfil, clearPerfilCache } from "@/lib/perfil";
 import { MARCA, MARCA_INICIAL } from "@/lib/brand";
-import { LayoutDashboard, TrendingUp, Users, Workflow, CalendarDays, MessageSquare, Settings, LogOut, Zap, Package, UsersRound, BarChart3, DollarSign } from "lucide-react";
+import { LayoutDashboard, TrendingUp, Users, Workflow, CalendarDays, MessageSquare, Settings, LogOut, Zap, Package, UsersRound, BarChart3, DollarSign, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -41,18 +41,22 @@ function NavGroup({
   label,
   pathname,
   badges,
+  collapsed,
 }: {
   items: NavItem[];
   label: string;
   pathname: string;
   badges: Record<string, number>;
+  collapsed: boolean;
 }) {
   if (items.length === 0) return null;
   return (
     <div className="space-y-1">
-      <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-        {label}
-      </p>
+      {!collapsed && (
+        <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+          {label}
+        </p>
+      )}
       {items.map((item) => {
         const Icon = item.icon;
         const active = pathname.startsWith(item.to);
@@ -61,23 +65,33 @@ function NavGroup({
           <Link
             key={item.to}
             to={item.to}
-            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+            title={collapsed ? item.label : undefined}
+            className={`relative flex items-center rounded-lg text-sm transition-colors ${
+              collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2"
+            } ${
               active
                 ? "bg-foreground text-background font-medium"
                 : "text-muted-foreground hover:bg-secondary hover:text-foreground"
             }`}
           >
             <Icon className="h-4 w-4 shrink-0" />
-            {item.label}
-            {badge > 0 && (
-              <span
-                className={`ml-auto min-w-[1.25rem] rounded-full px-1.5 text-center text-[10px] font-semibold ${
-                  active ? "bg-background text-foreground" : "bg-foreground text-background"
-                }`}
-              >
-                {badge}
-              </span>
-            )}
+            {!collapsed && item.label}
+            {badge > 0 &&
+              (collapsed ? (
+                <span
+                  className={`absolute right-2 top-1.5 h-2 w-2 rounded-full ${
+                    active ? "bg-background" : "bg-foreground"
+                  }`}
+                />
+              ) : (
+                <span
+                  className={`ml-auto min-w-[1.25rem] rounded-full px-1.5 text-center text-[10px] font-semibold ${
+                    active ? "bg-background text-foreground" : "bg-foreground text-background"
+                  }`}
+                >
+                  {badge}
+                </span>
+              ))}
           </Link>
         );
       })}
@@ -105,6 +119,21 @@ function AuthLayout() {
   const [marcaNombre, setMarcaNombre] = useState<string | null>(null);
   const [marcaLogo, setMarcaLogo] = useState<string | null>(null);
   const [badges, setBadges] = useState<Record<string, number>>({});
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("sidebar-collapsed") === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("sidebar-collapsed", collapsed ? "1" : "0");
+    } catch {
+      /* localStorage no disponible */
+    }
+  }, [collapsed]);
 
   // Marca propia del cliente (white-label). Se lee aparte para NO tocar la consulta del perfil.
   useEffect(() => {
@@ -213,43 +242,77 @@ function AuthLayout() {
 
   return (
     <div className="min-h-screen flex bg-muted/30">
-      <aside className="w-64 shrink-0 border-r bg-sidebar flex flex-col">
-        <div className="flex items-center gap-2.5 h-16 px-5 border-b">
+      <aside
+        className={`shrink-0 border-r bg-sidebar flex flex-col transition-[width] duration-200 ${
+          collapsed ? "w-16" : "w-64"
+        }`}
+      >
+        <div
+          className={`flex items-center h-16 border-b ${
+            collapsed ? "justify-center px-0" : "gap-2.5 px-5"
+          }`}
+        >
           {dispLogo ? (
-            <img src={dispLogo} alt={dispNombre} className="h-8 w-8 rounded-lg object-cover" />
+            <img src={dispLogo} alt={dispNombre} className="h-8 w-8 rounded-lg object-cover shrink-0" />
           ) : (
-            <div className="h-8 w-8 rounded-lg bg-foreground text-background flex items-center justify-center text-sm font-bold">
+            <div className="h-8 w-8 shrink-0 rounded-lg bg-foreground text-background flex items-center justify-center text-sm font-bold">
               {dispInicial}
             </div>
           )}
-          <div className="min-w-0">
-            <p className="text-sm font-semibold tracking-tight leading-none truncate">{dispNombre}</p>
-            <p className="text-[11px] text-muted-foreground mt-1 truncate">
-              {esAdmin ? "Administrador" : "Mi panel"}
-            </p>
-          </div>
-        </div>
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
-          <NavGroup items={principal} label="Principal" pathname={pathname} badges={badges} />
-          <NavGroup items={admin} label="Administración" pathname={pathname} badges={badges} />
-        </nav>
-        <div className="border-t p-3">
-          <div className="flex items-center gap-2.5 px-2 py-1.5 mb-1">
-            <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-xs font-semibold text-foreground">
-              {esAdmin ? "A" : "C"}
+          {!collapsed && (
+            <div className="min-w-0">
+              <p className="text-sm font-semibold tracking-tight leading-none truncate">{dispNombre}</p>
+              <p className="text-[11px] text-muted-foreground mt-1 truncate">
+                {esAdmin ? "Administrador" : "Mi panel"}
+              </p>
             </div>
-            <span className="text-xs text-muted-foreground truncate">
-              {esAdmin ? "Administrador" : "Mi cuenta"}
-            </span>
-          </div>
+          )}
+        </div>
+        <nav className={`flex-1 overflow-y-auto py-4 space-y-5 ${collapsed ? "px-2" : "px-3"}`}>
+          <NavGroup items={principal} label="Principal" pathname={pathname} badges={badges} collapsed={collapsed} />
+          <NavGroup items={admin} label="Administración" pathname={pathname} badges={badges} collapsed={collapsed} />
+        </nav>
+        <div className="border-t p-3 space-y-1">
+          <button
+            type="button"
+            onClick={() => setCollapsed((c) => !c)}
+            title={collapsed ? "Expandir menú" : "Contraer menú"}
+            className={`flex items-center rounded-lg py-2 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors ${
+              collapsed ? "w-full justify-center px-0" : "w-full gap-3 px-3"
+            }`}
+          >
+            {collapsed ? (
+              <ChevronsRight className="h-4 w-4" />
+            ) : (
+              <>
+                <ChevronsLeft className="h-4 w-4" />
+                Contraer
+              </>
+            )}
+          </button>
+          {!collapsed && (
+            <div className="flex items-center gap-2.5 px-2 py-1.5">
+              <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-xs font-semibold text-foreground">
+                {esAdmin ? "A" : "C"}
+              </div>
+              <span className="text-xs text-muted-foreground truncate">
+                {esAdmin ? "Administrador" : "Mi cuenta"}
+              </span>
+            </div>
+          )}
           <Button
             variant="ghost"
             size="sm"
-            className="w-full justify-start text-muted-foreground"
+            title="Cerrar sesión"
+            className={
+              collapsed
+                ? "w-full justify-center px-0 text-muted-foreground"
+                : "w-full justify-start text-muted-foreground"
+            }
             onClick={handleLogout}
           >
             <LogOut className="h-4 w-4" />
-            Cerrar sesión
+            {!collapsed && "Cerrar sesión"}
           </Button>
         </div>
       </aside>
